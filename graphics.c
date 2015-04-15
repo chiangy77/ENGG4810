@@ -6,15 +6,10 @@ extern void writeData(u_char data);
 extern u_char getScreenWidth();
 extern u_char getScreenHeight();
 
-//
 u_char colorLowByte = 0;
 u_char colorHighByte = 0;
 u_char bgColorLowByte = 0;
 u_char bgColorHighByte = 0;
-
-//////////////////////
-// color
-//////////////////////
 
 void setColor(u_int color) {
 	colorLowByte = color;
@@ -25,10 +20,6 @@ void setBackgroundColor(u_int color) {
 	bgColorLowByte = color;
 	bgColorHighByte = color >> 8;
 }
-
-/////////////////
-// drawing
-/////////////////
 
 void clearScreen(u_char blackWhite) {
 	u_char w = getScreenWidth();
@@ -53,9 +44,7 @@ void drawPixel(u_char x, u_char y) {
 	writeData(colorLowByte);
 }
 
-/////////////////////////////
-// Draw String - type: 0=Sm, 1=Md, 2=Lg, 3=Sm/Bkg, 4=Md/Bkg, 5=Lg/Bkg
-/////////////////////////////
+// Draw String - type: 0=Sm, 1=Md, 2=Lg
 void drawString(u_char x, u_char y, char type, char *string) {
 	u_char xs = x;
 	switch (type) {
@@ -77,30 +66,10 @@ void drawString(u_char x, u_char y, char type, char *string) {
 			xs += 12;
 		}
 		break;
-	case FONT_SM_BKG:
-		while (*string) {
-			drawCharSmBkg(xs, y, *string++);
-			xs += 6;
-		}
-		break;
-	case FONT_MD_BKG:
-		while (*string) {
-			drawCharMdBkg(xs, y, *string++);
-			xs += 8;
-		}
-		break;
-	case FONT_LG_BKG:
-		while (*string) {
-			drawCharLgBkg(xs, y, *string++);
-			xs += 12;
-		}
-		break;
 	}
 }
 
-//////////////////////////
-// 5x7 font - this function does not draw background pixels
-//////////////////////////
+// 5x7 font
 void drawCharSm(u_char x, u_char y, char c) {
 	u_char col = 0;
 	u_char row = 0;
@@ -118,39 +87,7 @@ void drawCharSm(u_char x, u_char y, char c) {
 	}
 }
 
-////////////////
-// 5x7 font - this function draws background pixels
-////////////////
-void drawCharSmBkg(u_char x, u_char y, char c) {
-	u_char col = 0;
-	u_char row = 0;
-	u_char bit = 0x01;
-	u_char oc = c - 0x20;
-	setArea(x, y, x + 4, y + 7); // if you want to fill column between chars, change x + 4 to x + 5
-
-	while (row < 8) {
-		while (col < 5) {
-			if (font_5x7[oc][col] & bit) {
-				//foreground
-				writeData(colorHighByte);
-				writeData(colorLowByte);
-			} else {
-				//background
-				writeData(bgColorHighByte);
-				writeData(bgColorLowByte);
-			}
-			col++;
-		}
-		// if you want to fill column between chars, writeData(bgColor) here
-		col = 0;
-		bit <<= 1;
-		row++;
-	}
-}
-
-////////////////
-// 11x16 font - this function does not draw background pixels
-////////////////
+// 11x16 font
 void drawCharLg(u_char x, u_char y, char c) {
 	u_char col = 0;
 	u_char row = 0;
@@ -168,37 +105,7 @@ void drawCharLg(u_char x, u_char y, char c) {
 	}
 }
 
-////////////////
-// 11x16 font - this function draws background pixels
-////////////////
-void drawCharLgBkg(u_char x, u_char y, char c) {
-	u_char col = 0;
-	u_char row = 0;
-	u_int bit = 0x0001;
-	u_char oc = c - 0x20;
-	setArea(x, y, x + 10, y + 15);
-	while (row < 16) {
-		while (col < 11) {
-			if (font_11x16[oc][col] & bit) {
-				//foreground
-				writeData(colorHighByte);
-				writeData(colorLowByte);
-			} else {
-				//background
-				writeData(bgColorHighByte);
-				writeData(bgColorLowByte);
-			}
-			col++;
-		}
-		col = 0;
-		bit <<= 1;
-		row++;
-	}
-}
-
-////////////////
-// 8x12 font - this function does not draw background pixels
-////////////////
+// 8x12 font
 void drawCharMd(u_char x, u_char y, char c) {
 	u_char col = 0;
 	u_char row = 0;
@@ -217,39 +124,8 @@ void drawCharMd(u_char x, u_char y, char c) {
 	}
 }
 
-////////////////
-// 8x12 font - this function draws background pixels
-////////////////
-void drawCharMdBkg(u_char x, u_char y, char c) {
-	u_char col = 0;
-	u_char row = 0;
-	u_char bit = 0x80;
-	u_char oc = c - 0x20;
-	setArea(x, y, x + 7, y + 11);
-	while (row < 12) {
-		while (col < 8) {
-			if (font_8x12[oc][row] & bit) {
-				//foreground
-				writeData(colorHighByte);
-				writeData(colorLowByte);
-			} else {
-				//background
-				writeData(bgColorHighByte);
-				writeData(bgColorLowByte);
-			}
-			bit >>= 1;
-			col++;
-		}
-		bit = 0x80;
-		col = 0;
-		row++;
-	}
 
-}
-
-////////////////////////
-// shapes
-////////////////////////
+//Shapes
 
 void drawLine(u_char xStart, u_char yStart, u_char xEnd, u_char yEnd) {
 
@@ -363,10 +239,6 @@ void drawCircle(u_char x, u_char y, u_char radius) {
 		}
 	}
 }
-
-/////////////////////////
-// fill
-/////////////////////////
 
 void fillRect(u_char xStart, u_char yStart, u_char xEnd, u_char yEnd) {
 	setArea(xStart, yStart, xEnd, yEnd);

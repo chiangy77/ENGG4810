@@ -14,10 +14,6 @@
 #include "lcd.h"
 #include "config.h"
 
-////////////////////////////////////
-// init
-////////////////////////////////////
-
 void initTiva() {
 
 	// run @80MHz, use 16MHz xtal
@@ -37,17 +33,11 @@ void initTiva() {
 	MAP_GPIOPinConfigure (GPIO_PB7_SSI2TX);
 	MAP_GPIOPinTypeSSI (GPIO_PORTB_BASE, GPIO_PIN_7);
 
-	// ILI9340's max SPI clk is 15MHz, ILI9341's 10MHz
-	// however, 320x240 LCD (ILI9341) works good @16M or higher
 	MAP_SSIConfigSetExpClk (SSI2_BASE, MAP_SysCtlClockGet (),
 			SSI_FRF_MOTO_MODE_0, SSI_MODE_MASTER, 16000000, 8);
 
 	MAP_SSIEnable (SSI2_BASE);
 }
-
-////////////////////////////////////
-// write & delay
-////////////////////////////////////
 
 // code duplication, but we are saving clock cycles by not passing dataCommand
 void writeData(u_char data) {
@@ -73,9 +63,6 @@ void writeCommand(u_char command) {
 	LCD_DESELECT;
 }
 
-/*
- * long delay
- */
 void delay(u_char x10ms) {
 	 MAP_SysCtlDelay( (MAP_SysCtlClockGet()/(3*100))*x10ms ) ;
 }

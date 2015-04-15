@@ -11,22 +11,11 @@ u_char getScreenWidth();
 u_char getScreenHeight();
 void setOrientation(u_char orientation);
 
-#ifdef ST7735
-//
+
 #define LONG_EDGE_PIXELS 160
 #define SHORT_EDGE_PIXELS 128
 #define LCD_OFFSET_HEIGHT 0
 #define LCD_OFFSET_WIDTH 0
-//
-
-#elif defined ILI9225
-//
-#define LONG_EDGE_PIXELS 220
-#define SHORT_EDGE_PIXELS 176
-#define LCD_OFFSET_HEIGHT 0
-#define LCD_OFFSET_WIDTH 0
-//
-#endif
 
 // orientation
 #define ORIENTATION_VERTICAL 0
