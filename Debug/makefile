@@ -11,9 +11,10 @@ ORDERED_OBJS += \
 "./graphics.obj" \
 "./lcd.obj" \
 "./led_task.obj" \
-"./screen_task.obj" \
+"./menu_task.obj" \
 "./startup_ccs.obj" \
 "./switch_task.obj" \
+"./tests.obj" \
 "./tiva.obj" \
 "./utils/uartstdio.obj" \
 "./utils/ustdlib.obj" \
@@ -155,7 +156,7 @@ all: freertos_demo.out
 freertos_demo.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: ARM Linker'
-	"C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/bin/armcl" -mv7M4 --code_state=16 --float_support=FPv4SPD16 --abi=eabi -me -O2 -g --gcc --define=ccs="ccs" --define=PART_TM4C123GH6PM --define=TARGET_IS_TM4C123_RB1 --diag_warning=225 --display_error_number --diag_wrap=off --gen_func_subsections=on --ual -z --stack_size=0x700 -m"freertos_demo_ccs.map" --heap_size=0x700 -i"C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/lib" -i"C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include" --reread_libs --warn_sections --display_error_number --diag_wrap=off --xml_link_info="freertos_demo_linkInfo.xml" --rom_model -o "freertos_demo.out" $(ORDERED_OBJS)
+	"C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/bin/armcl" -mv7M4 --code_state=16 --float_support=FPv4SPD16 --abi=eabi -me -O2 -g --gcc --define=ccs="ccs" --define=PART_TM4C123GH6PM --define=TARGET_IS_TM4C123_RB1 --diag_warning=225 --display_error_number --diag_wrap=off --gen_func_subsections=on --ual -z --stack_size=512 -m"freertos_demo_ccs.map" --heap_size=0x400 -i"C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/lib" -i"C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include" --reread_libs --warn_sections --display_error_number --diag_wrap=off --xml_link_info="freertos_demo_linkInfo.xml" --rom_model -o "freertos_demo.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 	@$(MAKE) --no-print-directory post-build
@@ -163,8 +164,8 @@ freertos_demo.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 # Other Targets
 clean:
 	-$(RM) $(EXE_OUTPUTS__QUOTED)
-	-$(RM) "freertos_demo.pp" "graphics.pp" "lcd.pp" "led_task.pp" "screen_task.pp" "startup_ccs.pp" "switch_task.pp" "tiva.pp" "utils\uartstdio.pp" "utils\ustdlib.pp" "third_party\FreeRTOS\Source\list.pp" "third_party\FreeRTOS\Source\queue.pp" "third_party\FreeRTOS\Source\tasks.pp" "third_party\FreeRTOS\Source\portable\MemMang\heap_2.pp" "third_party\FreeRTOS\Source\portable\CCS\ARM_CM4F\port.pp" "drivers\buttons.pp" "drivers\rgb.pp" 
-	-$(RM) "freertos_demo.obj" "graphics.obj" "lcd.obj" "led_task.obj" "screen_task.obj" "startup_ccs.obj" "switch_task.obj" "tiva.obj" "utils\uartstdio.obj" "utils\ustdlib.obj" "third_party\FreeRTOS\Source\list.obj" "third_party\FreeRTOS\Source\queue.obj" "third_party\FreeRTOS\Source\tasks.obj" "third_party\FreeRTOS\Source\portable\MemMang\heap_2.obj" "third_party\FreeRTOS\Source\portable\CCS\ARM_CM4F\port.obj" "third_party\FreeRTOS\Source\portable\CCS\ARM_CM4F\portasm.obj" "drivers\buttons.obj" "drivers\rgb.obj" 
+	-$(RM) "freertos_demo.pp" "graphics.pp" "lcd.pp" "led_task.pp" "menu_task.pp" "startup_ccs.pp" "switch_task.pp" "tests.pp" "tiva.pp" "utils\uartstdio.pp" "utils\ustdlib.pp" "third_party\FreeRTOS\Source\list.pp" "third_party\FreeRTOS\Source\queue.pp" "third_party\FreeRTOS\Source\tasks.pp" "third_party\FreeRTOS\Source\portable\MemMang\heap_2.pp" "third_party\FreeRTOS\Source\portable\CCS\ARM_CM4F\port.pp" "drivers\buttons.pp" "drivers\rgb.pp" 
+	-$(RM) "freertos_demo.obj" "graphics.obj" "lcd.obj" "led_task.obj" "menu_task.obj" "startup_ccs.obj" "switch_task.obj" "tests.obj" "tiva.obj" "utils\uartstdio.obj" "utils\ustdlib.obj" "third_party\FreeRTOS\Source\list.obj" "third_party\FreeRTOS\Source\queue.obj" "third_party\FreeRTOS\Source\tasks.obj" "third_party\FreeRTOS\Source\portable\MemMang\heap_2.obj" "third_party\FreeRTOS\Source\portable\CCS\ARM_CM4F\port.obj" "third_party\FreeRTOS\Source\portable\CCS\ARM_CM4F\portasm.obj" "drivers\buttons.obj" "drivers\rgb.obj" 
 	-$(RM) "third_party\FreeRTOS\Source\portable\CCS\ARM_CM4F\portasm.pp" 
 	-@echo 'Finished clean'
 	-@echo ' '

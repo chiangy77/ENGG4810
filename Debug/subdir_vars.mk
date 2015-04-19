@@ -11,9 +11,10 @@ C_SRCS += \
 ../graphics.c \
 ../lcd.c \
 ../led_task.c \
-../screen_task.c \
+../menu_task.c \
 ../startup_ccs.c \
 ../switch_task.c \
+../tests.c \
 ../tiva.c 
 
 OBJS += \
@@ -21,9 +22,10 @@ OBJS += \
 ./graphics.obj \
 ./lcd.obj \
 ./led_task.obj \
-./screen_task.obj \
+./menu_task.obj \
 ./startup_ccs.obj \
 ./switch_task.obj \
+./tests.obj \
 ./tiva.obj 
 
 C_DEPS += \
@@ -31,9 +33,10 @@ C_DEPS += \
 ./graphics.pp \
 ./lcd.pp \
 ./led_task.pp \
-./screen_task.pp \
+./menu_task.pp \
 ./startup_ccs.pp \
 ./switch_task.pp \
+./tests.pp \
 ./tiva.pp 
 
 C_DEPS__QUOTED += \
@@ -41,9 +44,10 @@ C_DEPS__QUOTED += \
 "graphics.pp" \
 "lcd.pp" \
 "led_task.pp" \
-"screen_task.pp" \
+"menu_task.pp" \
 "startup_ccs.pp" \
 "switch_task.pp" \
+"tests.pp" \
 "tiva.pp" 
 
 OBJS__QUOTED += \
@@ -51,9 +55,10 @@ OBJS__QUOTED += \
 "graphics.obj" \
 "lcd.obj" \
 "led_task.obj" \
-"screen_task.obj" \
+"menu_task.obj" \
 "startup_ccs.obj" \
 "switch_task.obj" \
+"tests.obj" \
 "tiva.obj" 
 
 C_SRCS__QUOTED += \
@@ -61,9 +66,10 @@ C_SRCS__QUOTED += \
 "../graphics.c" \
 "../lcd.c" \
 "../led_task.c" \
-"../screen_task.c" \
+"../menu_task.c" \
 "../startup_ccs.c" \
 "../switch_task.c" \
+"../tests.c" \
 "../tiva.c" 
 
 

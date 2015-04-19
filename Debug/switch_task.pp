@@ -17,7 +17,7 @@ switch_task.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/examples/boards/ek-tm4c123g
 switch_task.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/utils/uartstdio.h
 switch_task.obj: C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/stdarg.h
 switch_task.obj: ../switch_task.h
-switch_task.obj: ../led_task.h
+switch_task.obj: ../menu_task.h
 switch_task.obj: ../priorities.h
 switch_task.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/third_party/FreeRTOS/Source/include/FreeRTOS.h
 switch_task.obj: C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/stddef.h
@@ -48,7 +48,7 @@ c:/ti/TivaWare_C_Series-2.1.0.12573/examples/boards/ek-tm4c123gxl/drivers/button
 c:/ti/TivaWare_C_Series-2.1.0.12573/utils/uartstdio.h: 
 C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/stdarg.h: 
 ../switch_task.h: 
-../led_task.h: 
+../menu_task.h: 
 ../priorities.h: 
 c:/ti/TivaWare_C_Series-2.1.0.12573/third_party/FreeRTOS/Source/include/FreeRTOS.h: 
 C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/stddef.h: 
