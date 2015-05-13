@@ -49,7 +49,7 @@
 #define SCREEN_ITEM_SIZE           sizeof(uint8_t)
 #define SCREEN_QUEUE_SIZE          5
 
-#define SCREEN_TOGGLE_DELAY        250
+#define SCREEN_TOGGLE_DELAY        50
 
 //*****************************************************************************
 static FATFS g_sFatFs;
@@ -823,10 +823,10 @@ void checkSDCard(void) {
 
 }
 
-void initWriteSDCard (int diameter, int mass, int hour, int minute, int second, char *textFileName) {
+void initWriteSDCard (int diameter, int mass, int year, int month, int day, int hour, int minute, int second, char *textFileName) {
 
 	uint32_t ui32RcvDat;
-	char message[20];
+	char message[30];
 	FRESULT iFResult;
 	uint32_t count = 8*512;
 
@@ -864,7 +864,7 @@ void initWriteSDCard (int diameter, int mass, int hour, int minute, int second, 
 			xSemaphoreGive(g_pUARTSemaphore);
 	}
 
-	usnprintf(message, 20, "%d %d %02d:%02d:%02d\r\n", diameter, mass, hour, minute, second);
+	usnprintf(message, 30, "%d %d %02d/%02d/%04d %02d:%02d:%02d\r\n", diameter, mass, day, month, year, hour, minute, second);
 
 	iFResult = f_write(&fil, message, strlen(message), &count);
 
@@ -1153,14 +1153,15 @@ ScreenTask(void *pvParameters)
             			if(menuOption == 0) {
             				adOption = 0;
             				getTime(&hour, &minute, &second);
+            				getDate(&year, &month, &day);
             				if (fileTrack == 1)
-            					initWriteSDCard(diameter, mass, hour, minute, second, "Journey15.txt");
+            					initWriteSDCard(diameter, mass, year, month, day, hour, minute, second, "Journey1.txt");
             				else if (fileTrack == 2)
-            					initWriteSDCard(diameter, mass, hour, minute, second, "Journey16.txt");
+            					initWriteSDCard(diameter, mass, year, month, day, hour, minute, second, "Journey2.txt");
             				else if (fileTrack == 3)
-								initWriteSDCard(diameter, mass, hour, minute, second, "Journey17.txt");
+								initWriteSDCard(diameter, mass, year, month, day, hour, minute, second, "Journey3.txt");
             				else if (fileTrack == 4)
-            					initWriteSDCard(diameter, mass, hour, minute, second, "Journey18.txt");
+            					initWriteSDCard(diameter, mass, year, month, day, hour, minute, second, "Journey4.txt");
             				fileTrack++;
             				if (fileTrack < 6) {
             					loop = 1;
