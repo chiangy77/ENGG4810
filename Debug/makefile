@@ -7,11 +7,17 @@ SHELL = cmd.exe
 CG_TOOL_ROOT := C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2
 
 ORDERED_OBJS += \
+"./RTC.obj" \
+"./RTC_task.obj" \
+"./cc932.obj" \
+"./diskio.obj" \
+"./ff.obj" \
 "./freertos_demo.obj" \
 "./graphics.obj" \
 "./lcd.obj" \
 "./led_task.obj" \
-"./menu_task.obj" \
+"./radio_task.obj" \
+"./screen_task.obj" \
 "./startup_ccs.obj" \
 "./switch_task.obj" \
 "./tests.obj" \
@@ -164,8 +170,8 @@ freertos_demo.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 # Other Targets
 clean:
 	-$(RM) $(EXE_OUTPUTS__QUOTED)
-	-$(RM) "freertos_demo.pp" "graphics.pp" "lcd.pp" "led_task.pp" "menu_task.pp" "startup_ccs.pp" "switch_task.pp" "tests.pp" "tiva.pp" "utils\uartstdio.pp" "utils\ustdlib.pp" "third_party\FreeRTOS\Source\list.pp" "third_party\FreeRTOS\Source\queue.pp" "third_party\FreeRTOS\Source\tasks.pp" "third_party\FreeRTOS\Source\portable\MemMang\heap_2.pp" "third_party\FreeRTOS\Source\portable\CCS\ARM_CM4F\port.pp" "drivers\buttons.pp" "drivers\rgb.pp" 
-	-$(RM) "freertos_demo.obj" "graphics.obj" "lcd.obj" "led_task.obj" "menu_task.obj" "startup_ccs.obj" "switch_task.obj" "tests.obj" "tiva.obj" "utils\uartstdio.obj" "utils\ustdlib.obj" "third_party\FreeRTOS\Source\list.obj" "third_party\FreeRTOS\Source\queue.obj" "third_party\FreeRTOS\Source\tasks.obj" "third_party\FreeRTOS\Source\portable\MemMang\heap_2.obj" "third_party\FreeRTOS\Source\portable\CCS\ARM_CM4F\port.obj" "third_party\FreeRTOS\Source\portable\CCS\ARM_CM4F\portasm.obj" "drivers\buttons.obj" "drivers\rgb.obj" 
+	-$(RM) "RTC.pp" "RTC_task.pp" "cc932.pp" "diskio.pp" "ff.pp" "freertos_demo.pp" "graphics.pp" "lcd.pp" "led_task.pp" "radio_task.pp" "screen_task.pp" "startup_ccs.pp" "switch_task.pp" "tests.pp" "tiva.pp" "utils\uartstdio.pp" "utils\ustdlib.pp" "third_party\FreeRTOS\Source\list.pp" "third_party\FreeRTOS\Source\queue.pp" "third_party\FreeRTOS\Source\tasks.pp" "third_party\FreeRTOS\Source\portable\MemMang\heap_2.pp" "third_party\FreeRTOS\Source\portable\CCS\ARM_CM4F\port.pp" "drivers\buttons.pp" "drivers\rgb.pp" 
+	-$(RM) "RTC.obj" "RTC_task.obj" "cc932.obj" "diskio.obj" "ff.obj" "freertos_demo.obj" "graphics.obj" "lcd.obj" "led_task.obj" "radio_task.obj" "screen_task.obj" "startup_ccs.obj" "switch_task.obj" "tests.obj" "tiva.obj" "utils\uartstdio.obj" "utils\ustdlib.obj" "third_party\FreeRTOS\Source\list.obj" "third_party\FreeRTOS\Source\queue.obj" "third_party\FreeRTOS\Source\tasks.obj" "third_party\FreeRTOS\Source\portable\MemMang\heap_2.obj" "third_party\FreeRTOS\Source\portable\CCS\ARM_CM4F\port.obj" "third_party\FreeRTOS\Source\portable\CCS\ARM_CM4F\portasm.obj" "drivers\buttons.obj" "drivers\rgb.obj" 
 	-$(RM) "third_party\FreeRTOS\Source\portable\CCS\ARM_CM4F\portasm.pp" 
 	-@echo 'Finished clean'
 	-@echo ' '

@@ -35,6 +35,8 @@
 #include "led_task.h"
 #include "switch_task.h"
 #include "screen_task.h"
+#include "radio_task.h"
+#include "RTC_task.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
@@ -84,6 +86,7 @@
 //
 //*****************************************************************************
 xSemaphoreHandle g_pUARTSemaphore;
+//xSemaphoreHandle g_pSPISemaphore;
 
 //*****************************************************************************
 //
@@ -156,6 +159,8 @@ ConfigureUART(void)
 int
 main(void)
 {
+	ROM_FPULazyStackingEnable();
+
 	//
 	// Set the clocking to run at 50 MHz from the PLL.
 	//
@@ -166,9 +171,10 @@ main(void)
 	// Print demo introduction.
 	UARTprintf("\n\nWelcome to the EK-TM4C123GXL FreeRTOS:\n");
 	//
-	// Create a mutex to guard the UART.
+	// Create a mutex to guard the UART and SPI.
 	//
 	g_pUARTSemaphore = xSemaphoreCreateMutex();
+	//g_pSPISemaphore = xSemaphoreCreateMutex();
 
 	// Create the LED task.
 	if(LEDTaskInit() != 0)
@@ -178,16 +184,29 @@ main(void)
 				}
 		}
 
-	// Create the LED task.
-	if(ScreenTaskInit() != 0)
+	// Create the switch task.
+	if(SwitchTaskInit() != 0)
 		{
 			while(1)
 				{
 				}
 		}
 
-	// Create the switch task.
-	if(SwitchTaskInit() != 0)
+	if(RadioTaskInit() != 0)
+		{
+			while(1)
+				{
+				}
+		}
+
+	if(RTCTaskInit() != 0)
+		{
+			while(1)
+				{
+				}
+		}
+
+	if(ScreenTaskInit() != 0)
 		{
 			while(1)
 				{

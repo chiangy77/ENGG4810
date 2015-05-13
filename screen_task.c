@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "inc/hw_memmap.h"
+#include "driverlib/fpu.h"
 #include "inc/hw_types.h"
 #include "driverlib/gpio.h"
 #include "driverlib/rom.h"
@@ -13,6 +14,13 @@
 #include "task.h"
 #include "queue.h"
 #include "semphr.h"
+#include "driverlib/interrupt.h"
+#include "driverlib/pin_map.h"
+#include "driverlib/rom.h"
+#include "driverlib/sysctl.h"
+#include "driverlib/systick.h"
+#include "fatfs/src/ff.h"
+#include "fatfs/src/diskio.h"
 
 #include "tiva.h"
 #include "lcd.h"
@@ -20,16 +28,18 @@
 #include "color.h"
 #include "typedefs.h"
 #include <math.h>
+#include "RTC.h"
 
 #include "utils/uartstdio.h"
 #include <stdio.h>
+#include <string.h>
 
 //*****************************************************************************
 //
 // The stack size for the display task.
 //
 //*****************************************************************************
-#define SCREENTASKSTACKSIZE        128         // Stack size in words
+#define SCREENTASKSTACKSIZE        1024         // Stack size in words
 
 //*****************************************************************************
 //
@@ -42,33 +52,118 @@
 #define SCREEN_TOGGLE_DELAY        250
 
 //*****************************************************************************
+static FATFS g_sFatFs;
+
+//*****************************************************************************
+//
+// A structure that holds a mapping between an FRESULT numerical code, and a
+// string representation.  FRESULT codes are returned from the FatFs FAT file
+// system driver.
+//
+//*****************************************************************************
+typedef struct
+{
+	FRESULT iFResult;
+	char *pcResultStr;
+}
+tFResultString;
+
+//*****************************************************************************
+//
+// A macro to make it easy to add result codes to the table.
+//
+//*****************************************************************************
+#define FRESULT_ENTRY(f)        { (f), (#f) }
+
+//*****************************************************************************
+//
+// A table that holds a mapping between the numerical FRESULT code and it's
+// name as a string.  This is used for looking up error codes for printing to
+// the console.
+//
+//*****************************************************************************
+tFResultString g_psFResultStrings[] =
+{
+		FRESULT_ENTRY(FR_OK),
+		FRESULT_ENTRY(FR_DISK_ERR),
+		FRESULT_ENTRY(FR_INT_ERR),
+		FRESULT_ENTRY(FR_NOT_READY),
+		FRESULT_ENTRY(FR_NO_FILE),
+		FRESULT_ENTRY(FR_NO_PATH),
+		FRESULT_ENTRY(FR_INVALID_NAME),
+		FRESULT_ENTRY(FR_DENIED),
+		FRESULT_ENTRY(FR_EXIST),
+		FRESULT_ENTRY(FR_INVALID_OBJECT),
+		FRESULT_ENTRY(FR_WRITE_PROTECTED),
+		FRESULT_ENTRY(FR_INVALID_DRIVE),
+		FRESULT_ENTRY(FR_NOT_ENABLED),
+		FRESULT_ENTRY(FR_NO_FILESYSTEM),
+		FRESULT_ENTRY(FR_MKFS_ABORTED),
+		FRESULT_ENTRY(FR_TIMEOUT),
+		FRESULT_ENTRY(FR_LOCKED),
+		FRESULT_ENTRY(FR_NOT_ENOUGH_CORE),
+		FRESULT_ENTRY(FR_TOO_MANY_OPEN_FILES),
+		FRESULT_ENTRY(FR_INVALID_PARAMETER),
+};
+
+//*****************************************************************************
+//
+// A macro that holds the number of result codes.
+//
+//*****************************************************************************
+#define NUM_FRESULT_CODES       (sizeof(g_psFResultStrings) /                 \
+		sizeof(tFResultString))
+
+//*****************************************************************************
+//
+// This function returns a string representation of an error code that was
+// returned from a function call to FatFs.  It can be used for printing human
+// readable error messages.
+//
+//*****************************************************************************
+const char *
+StringFromFResult(FRESULT iFResult)
+{
+	uint_fast8_t ui8Idx;
+
+	//
+	// Enter a loop to search the error code table for a matching error code.
+	//
+	for(ui8Idx = 0; ui8Idx < NUM_FRESULT_CODES; ui8Idx++)
+	{
+		//
+		// If a match is found, then return the string name of the error code.
+		//
+		if(g_psFResultStrings[ui8Idx].iFResult == iFResult)
+		{
+			return(g_psFResultStrings[ui8Idx].pcResultStr);
+		}
+	}
+
+	//
+	// At this point no matching code was found, so return a string indicating
+	// an unknown error.
+	//
+	return("UNKNOWN ERROR CODE");
+}
+
+//*****************************************************************************
 //
 // The queue that holds messages sent to the LED task.
 //
 //*****************************************************************************
 xQueueHandle g_pScreenQueue;
 
-
-#define MAIN_MENU 	0
-#define ALG_DGT 	1
-#define TIM_DAT 	3
-#define PARAMS 		4
-#define STOP 		5
-#define BREAK 		6
-#define CHANGE_TIME 7
-#define CHANGE_DIAM 8
-#define CHANGE_MASS 9
-#define CHANGE_DATE 10
-
-#define PI 3.1416
-
 extern xSemaphoreHandle g_pUARTSemaphore;
+//extern xSemaphoreHandle g_pSPISemaphore;
 
 int speed = 10;
 int accel = 5;
 int gForce = 1;
 int odom = 0;
 int dir = 0;
+
+FIL fil;
 
 int state = 0; //which screen showing on LCD
 int menuOption = 0; //which option is currently highlighted on the menu
@@ -394,12 +489,8 @@ void showAnalogSpeed(void) {
 
 	//show speed
 	drawString(68, 5, FONT_SM, "Speed");
-	drawCircle(80,90, 70);
+	drawHalfCircle(80,90, 70);
 
-	setColor(COLOR_BLACK);
-	fillRect(0,91,160,125);
-
-	setColor(COLOR_WHITE);
 	drawString(63, 33, FONT_SM, "50 km/hr");
 	drawString(15, 83, FONT_SM, "0 km/hr");
 	drawString(95, 83, FONT_SM, "100 km/hr");
@@ -410,8 +501,8 @@ void showAnalogSpeed(void) {
 
 	drawCircle(80,90, 2);
 
-	drawCircle(25,125,25); //acceleration
-	drawCircle(80,125,25); //g-force
+	drawHalfCircle(25,125,25); //acceleration
+	drawHalfCircle(80,125,25); //g-force
 	usnprintf (buffer, 20, "%d m", odom);
 	drawString(118, 110, FONT_SM, buffer);
 
@@ -451,12 +542,8 @@ void showAnalogAccel(void) {
 
 	//show speed
 	drawString(45, 5, FONT_SM, "Acceleration");
-	drawCircle(80,90, 70);
+	drawHalfCircle(80,90, 70);
 
-	setColor(COLOR_BLACK);
-	fillRect(0,91,160,125);
-
-	setColor(COLOR_WHITE);
 	drawString(63, 33, FONT_SM, "10 m/s^2");
 	drawString(15, 83, FONT_SM, "0 m/s^2");
 	drawString(95, 83, FONT_SM, "20 m/s^2");
@@ -467,8 +554,8 @@ void showAnalogAccel(void) {
 
 	drawCircle(80,90, 2);
 
-	drawCircle(25,125,25); //acceleration
-	drawCircle(80,125,25); //g-force
+	drawHalfCircle(25,125,25); //acceleration
+	drawHalfCircle(80,125,25); //g-force
 	usnprintf (buffer, 20, "%d m", odom);
 	drawString(118, 110, FONT_SM, buffer);
 
@@ -509,12 +596,8 @@ void showAnalogGForce(void) {
 
 	//show speed
 	drawString(60, 5, FONT_SM, "G-Force");
-	drawCircle(80,90, 70);
+	drawHalfCircle(80,90, 70);
 
-	setColor(COLOR_BLACK);
-	fillRect(0,91,160,125);
-
-	setColor(COLOR_WHITE);
 	drawString(63, 33, FONT_SM, "5 m/s^2");
 	drawString(15, 83, FONT_SM, "0 m/s^2");
 	drawString(95, 83, FONT_SM, "10 m/s^2");
@@ -525,8 +608,8 @@ void showAnalogGForce(void) {
 
 	drawCircle(80,90, 2);
 
-	drawCircle(25,125,25); //acceleration
-	drawCircle(80,125,25); //g-force
+	drawHalfCircle(25,125,25); //acceleration
+	drawHalfCircle(80,125,25); //g-force
 	usnprintf (buffer, 20, "%d m", odom);
 	drawString(118, 110, FONT_SM, buffer);
 
@@ -622,7 +705,7 @@ void changeTime (int hour, int minute, int second, int cursor) {
 }
 
 void changeDate (int year, int month, int day, int cursor) {
-	char buffer[] =  "01 / 01";
+	char buffer[] =  "01/01/1994";
 
 	clearScreen(1);
 	usnprintf(buffer, 20, "%02d/%02d/%04d", day, month, year);
@@ -633,10 +716,8 @@ void changeDate (int year, int month, int day, int cursor) {
 	else if (cursor == 1)
 		drawString(45, 80, FONT_LG, "__");
 	else if (cursor == 2)
-		drawString(96, 80, FONT_LG, "_");
-	else if (cursor == 3)
 		drawString(108, 80, FONT_LG, "_");
-	else if (cursor == 4)
+	else if (cursor == 3)
 		drawString(120, 80, FONT_LG, "_");
 }
 
@@ -646,6 +727,17 @@ void changeDiam (int diameter) {
 	clearScreen(1);
 	usnprintf(buffer, 20, "%d mm", diameter);
 	drawString(10, 75, FONT_LG, buffer);
+}
+
+void displayTimeDate (int year, int month, int day, int hour, int minute, int second) {
+	char buffer [] = "00 : 00 : 00";
+
+	clearScreen(1);
+	usnprintf(buffer, 20, "%02d : %02d : %02d",hour, minute, second);
+	drawString(10, 25, FONT_LG, buffer);
+
+	usnprintf(buffer, 20, "%02d/%02d/%04d", day, month, year);
+	drawString(10, 95, FONT_LG, buffer);
 }
 
 void changeMass (int mass) {
@@ -665,7 +757,7 @@ void hardcodeParams (void) {
 		speed += 10;
 		accel += 1;
 		gForce += 1;
-		odom += 20;
+		odom += 1;
 	} else {
 		if (speed == 10) {
 			dir = 0;
@@ -673,8 +765,234 @@ void hardcodeParams (void) {
 		speed -= 10;
 		accel -= 1;
 		gForce -= 1;
-		odom += 20;
+		odom += 2;
 	}
+}
+
+void checkSDCard(void) {
+
+	uint32_t ui32RcvDat;
+	FRESULT iFResult;
+	uint32_t count = 8*512;
+
+	//taskENTER_CRITICAL();
+
+	while(SSIDataGetNonBlocking(SSI2_BASE, &ui32RcvDat)) {}
+
+	ROM_SysTickPeriodSet(ROM_SysCtlClockGet() / 100);
+
+	iFResult = f_mount(0, &g_sFatFs);
+	if(iFResult != FR_OK)
+	{       xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+			UARTprintf("f_mount error: %s\n", StringFromFResult(iFResult));
+			xSemaphoreGive(g_pUARTSemaphore);
+			//return(1);
+	}
+	else {
+			xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+			UARTprintf("Mounted properly\n");
+			xSemaphoreGive(g_pUARTSemaphore);
+	}
+
+	iFResult = f_open(&fil, "TestFile1.txt", FA_CREATE_ALWAYS|FA_WRITE);
+
+	if(iFResult != FR_OK) {
+		xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+		UARTprintf("fresult: %s\n", StringFromFResult(iFResult));
+		xSemaphoreGive(g_pUARTSemaphore);
+
+		drawString(0, 50, FONT_MD, "There is no SD");
+		drawString(0, 70, FONT_MD, "card in the slot");
+	}
+	else{
+		xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+		UARTprintf("Opened SD card\n");
+		xSemaphoreGive(g_pUARTSemaphore);
+
+		drawString(0, 50, FONT_MD, "There is an SD");
+		drawString(0, 70, FONT_MD, "card in the slot");
+
+		iFResult = f_close(&fil);
+	}
+
+	while(SSIDataGetNonBlocking(SSI2_BASE, &ui32RcvDat)) {}
+
+	ROM_SysTickPeriodSet(ROM_SysCtlClockGet() / 1600);
+
+	//taskEXIT_CRITICAL();
+
+}
+
+void initWriteSDCard (int diameter, int mass, int hour, int minute, int second, char *textFileName) {
+
+	uint32_t ui32RcvDat;
+	char message[20];
+	FRESULT iFResult;
+	uint32_t count = 8*512;
+
+	taskENTER_CRITICAL();
+
+	while(SSIDataGetNonBlocking(SSI2_BASE, &ui32RcvDat)) {}
+
+	ROM_SysTickPeriodSet(ROM_SysCtlClockGet() / 100);
+
+	memset(message, NULL, sizeof(message));
+
+	iFResult = f_mount(0, &g_sFatFs);
+	if(iFResult != FR_OK)
+	{       xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+			UARTprintf("f_mount error: %s\n", StringFromFResult(iFResult));
+			xSemaphoreGive(g_pUARTSemaphore);
+			//return(1);
+	}
+	else {
+			xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+			UARTprintf("Mounted properly\n");
+			xSemaphoreGive(g_pUARTSemaphore);
+	}
+
+	iFResult = f_open(&fil, textFileName, FA_CREATE_ALWAYS|FA_WRITE);
+
+	if(iFResult != FR_OK) {
+			xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+			UARTprintf("fresult: %s\n", StringFromFResult(iFResult));
+			xSemaphoreGive(g_pUARTSemaphore);
+	}
+	else{
+			xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+			UARTprintf("Opened SD card\n");
+			xSemaphoreGive(g_pUARTSemaphore);
+	}
+
+	usnprintf(message, 20, "%d %d %02d:%02d:%02d\r\n", diameter, mass, hour, minute, second);
+
+	iFResult = f_write(&fil, message, strlen(message), &count);
+
+	if(iFResult != FR_OK) {
+			xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+			UARTprintf("Error writing to file: %s\n", StringFromFResult(iFResult));
+			xSemaphoreGive(g_pUARTSemaphore);
+	}
+	else {
+			xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+			UARTprintf("y\n");
+			xSemaphoreGive(g_pUARTSemaphore);
+	}
+
+	iFResult = f_sync(&fil);
+
+	while(SSIDataGetNonBlocking(SSI2_BASE, &ui32RcvDat)) {}
+
+	ROM_SysTickPeriodSet(ROM_SysCtlClockGet() / 1600);
+
+	taskEXIT_CRITICAL();
+}
+
+void writeSDCard (int sp, int acceleration, int dist) {
+
+	uint32_t ui32RcvDat;
+	char message[20];
+	FRESULT iFResult;
+	uint32_t count = 8*512;
+
+	taskENTER_CRITICAL();
+
+	while(SSIDataGetNonBlocking(SSI2_BASE, &ui32RcvDat)) {}
+
+	ROM_SysTickPeriodSet(ROM_SysCtlClockGet() / 100);
+
+	memset(message, NULL, sizeof(message));
+
+	usnprintf(message, 20, "%d %d %d\r\n", sp, acceleration, dist);
+
+	iFResult = f_write(&fil, message, strlen(message), &count);
+
+	if(iFResult != FR_OK) {
+			xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+			UARTprintf("Error writing to file: %s\n", StringFromFResult(iFResult));
+			xSemaphoreGive(g_pUARTSemaphore);
+	}
+	else {
+			xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+			UARTprintf("y\n");
+			xSemaphoreGive(g_pUARTSemaphore);
+	}
+
+	iFResult = f_sync(&fil);
+
+	while(SSIDataGetNonBlocking(SSI2_BASE, &ui32RcvDat)) {}
+
+	ROM_SysTickPeriodSet(ROM_SysCtlClockGet() / 1600);
+
+	taskEXIT_CRITICAL();
+}
+
+void closeSDCard (int hour, int minute, int second, int year, int month, int day) {
+
+	uint32_t ui32RcvDat;
+	FRESULT iFResult;
+	char message[50];
+	uint32_t count = 8*512;
+
+	taskENTER_CRITICAL();
+
+	while(SSIDataGetNonBlocking(SSI2_BASE, &ui32RcvDat)) {}
+
+	ROM_SysTickPeriodSet(ROM_SysCtlClockGet() / 100);
+
+	memset(message, NULL, sizeof(message));
+
+	usnprintf(message, 50, "%02d/%02d/%02d %02d:%02d:%02d\r\n", day, month, year, hour, minute, second);
+
+	iFResult = f_write(&fil, message, strlen(message), &count);
+
+	if(iFResult != FR_OK) {
+			xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+			UARTprintf("Error writing to file: %s\n", StringFromFResult(iFResult));
+			xSemaphoreGive(g_pUARTSemaphore);
+	}
+	else {
+			xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+			UARTprintf("Successfully written to SD card\n");
+			xSemaphoreGive(g_pUARTSemaphore);
+	}
+
+	iFResult = f_close(&fil);
+
+	if(iFResult != FR_OK) {
+			xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+			UARTprintf("Error closing the file: %s\n", StringFromFResult(iFResult));
+			xSemaphoreGive(g_pUARTSemaphore);
+	}
+	else {
+			xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+			UARTprintf("Successfully closed the SD card\n");
+			xSemaphoreGive(g_pUARTSemaphore);
+	}
+
+	while(SSIDataGetNonBlocking(SSI2_BASE, &ui32RcvDat)) {}
+
+	ROM_SysTickPeriodSet(ROM_SysCtlClockGet() / 1600);
+
+	taskEXIT_CRITICAL();
+}
+
+uint8_t BCD(int input) {
+	uint8_t upper, lower;
+
+	upper = ((input%100)/10) << 4;
+	lower = input%10;
+
+	return (upper|lower);
+}
+
+uint8_t DCB(int input) {
+	uint8_t upper, lower;
+
+	upper = (input >> 4) * 10;
+	lower = input & 0x0F;
+
+	return (upper + lower);
 }
 
 static void
@@ -688,10 +1006,11 @@ ScreenTask(void *pvParameters)
 
 	int loop = 0;
 	int analogTrack = 0, changeTimeTrack = 0, changeDateTrack = 0;
-	int hour = 9, minute = 32, second = 55; //keep record of time
-	int year = 2015, month = 4, day = 17;
+	int hour = 20, minute = 32, second = 55; //keep record of time
+	int year = 2015, month = 4, day = 29;
 	int mass = 800;
 	int diameter = 600;
+	int fileTrack = 1;
 
     //
     // Loop forever.
@@ -703,12 +1022,12 @@ ScreenTask(void *pvParameters)
         //
         if(xQueueReceive(g_pScreenQueue, &i8ButtonMessage, 10) == pdPASS)
         {
+        	//xSemaphoreTake(g_pSPISemaphore, portMAX_DELAY);
             //
             // If left button, update to next LED.
             //
             if(i8ButtonMessage == LEFT_BUTTON)
             {
-
 
             	switch(state) {
             		case MAIN_MENU:
@@ -758,14 +1077,12 @@ ScreenTask(void *pvParameters)
             				month++;
             				checkDate(year, &month, &day);
             			} else if (changeDateTrack == 2) {
-            				year += 100;
-            			} else if (changeDateTrack == 3) {
             				year += 10;
-            			} else if (changeDateTrack == 4) {
+            			} else if (changeDateTrack == 3) {
             				year += 1;
             			}
-            			if (year > 3000)
-							year -= 1000;
+            			if (year > 2100)
+							year -= 100;
 
             			changeDate(year, month, day, changeDateTrack);
             			break;
@@ -795,8 +1112,23 @@ ScreenTask(void *pvParameters)
             				analogTrack = 0;
             			break;
 
+            		case FROM_RTC:
+						clearScreen(1);
+
+						setColor(COLOR_RED);
+						fillRect(0,45,160,65);
+
+						setColor(COLOR_WHITE);
+						drawString(30, 20, FONT_LG, "Main Menu");
+						drawString(0, 50, FONT_MD, "Start Journey");
+						drawString(0, 70, FONT_MD, "Stop Journey");
+						drawString(0, 90, FONT_MD, "Change Time/Date");
+						drawString(0, 110, FONT_MD, "Enter Vehicle Params");
+						state = MAIN_MENU;
+						menuOption = 0;
+						break;
+
             		default:
-            			clearScreen(1);
             			break;
 
             	}
@@ -820,10 +1152,31 @@ ScreenTask(void *pvParameters)
             		case MAIN_MENU:
             			if(menuOption == 0) {
             				adOption = 0;
-            				state = ALG_DGT;
-            				algDgtScreen();
+            				getTime(&hour, &minute, &second);
+            				if (fileTrack == 1)
+            					initWriteSDCard(diameter, mass, hour, minute, second, "Journey15.txt");
+            				else if (fileTrack == 2)
+            					initWriteSDCard(diameter, mass, hour, minute, second, "Journey16.txt");
+            				else if (fileTrack == 3)
+								initWriteSDCard(diameter, mass, hour, minute, second, "Journey17.txt");
+            				else if (fileTrack == 4)
+            					initWriteSDCard(diameter, mass, hour, minute, second, "Journey18.txt");
+            				fileTrack++;
+            				if (fileTrack < 6) {
+            					loop = 1;
+								state = ALG_DGT;
+								algDgtScreen();
+            				}
+							else {
+								stopScreen();
+								state = STOP;
+							}
 
             			} else if (menuOption == 1) {
+            				loop = 0;
+            				getTime(&hour, &minute, &second);
+            				getDate(&year, &month, &day);
+                			closeSDCard(hour, minute, second, year, month, day);
             				state = STOP;
             				stopScreen();
 
@@ -860,7 +1213,7 @@ ScreenTask(void *pvParameters)
             			break;
 
             		case BREAK:
-            			loop = 0;
+            			loop = 1;
             			adOption = 0;
 						state = ALG_DGT;
 						algDgtScreen();
@@ -872,10 +1225,12 @@ ScreenTask(void *pvParameters)
 							state = MAIN_MENU;
 							menuScreen();
 						} else if (tdOption == 1) {
+							getTime(&hour, &minute, &second);
 							changeTimeTrack = 0;
 							changeTime(hour, minute, second, changeTimeTrack);
 							state = CHANGE_TIME;
 						} else if (tdOption == 2) {
+							getDate(&year, &month, &day);
 							changeDateTrack = 0;
 							changeDate(year, month, day, changeDateTrack);
 							state = CHANGE_DATE;
@@ -884,7 +1239,8 @@ ScreenTask(void *pvParameters)
 
             		case CHANGE_TIME:
             			if (changeTimeTrack == 2) {
-            				/*TODO: Change RTC*/
+            				I2CSend(SLAVE_ADDR, 4, TIME_ADDR, BCD(second), BCD(minute), BCD(hour));
+
             				state = TIM_DAT;
 							tdOption = 0;
 							timDatScreen();
@@ -896,7 +1252,9 @@ ScreenTask(void *pvParameters)
             			break;
 
             		case CHANGE_DATE:
-            			if (changeDateTrack == 4) {
+            			if (changeDateTrack == 3) {
+            				I2CSend(SLAVE_ADDR, 4, DATE_ADDR, BCD(day), BCD(month), BCD(year));
+
             				state = TIM_DAT;
 							tdOption = 0;
 							timDatScreen();
@@ -932,6 +1290,26 @@ ScreenTask(void *pvParameters)
 						diaMassScreen();
             			break;
 
+            		case FROM_RTC:
+            			clearScreen(1);
+
+            			setColor(COLOR_RED);
+            			fillRect(0,45,160,65);
+
+            			setColor(COLOR_WHITE);
+            			drawString(30, 20, FONT_LG, "Main Menu");
+            			drawString(0, 50, FONT_MD, "Start Journey");
+            			drawString(0, 70, FONT_MD, "Stop Journey");
+            			drawString(0, 90, FONT_MD, "Change Time/Date");
+            			drawString(0, 110, FONT_MD, "Enter Vehicle Params");
+            			state = MAIN_MENU;
+            			menuOption = 0;
+
+            			xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+						UARTprintf("In FROM_RTC\n");
+						xSemaphoreGive(g_pUARTSemaphore);
+            			break;
+
             		default:
 						break;
             	}
@@ -947,7 +1325,10 @@ ScreenTask(void *pvParameters)
             }
         }
 
-        hardcodeParams();
+        if (loop) {
+        	hardcodeParams();
+        	writeSDCard(speed, accel, odom);
+        }
 
         if (loop == 11)
         	showDigital();
@@ -958,6 +1339,7 @@ ScreenTask(void *pvParameters)
         else if (loop == 21 && analogTrack == 2)
 			showAnalogGForce();
 
+        //xSemaphoreGive(g_pSPISemaphore);
 
         vTaskDelayUntil(&ui32WakeTime, ui32ScreenToggleDelay / portTICK_RATE_MS);
 
@@ -965,25 +1347,28 @@ ScreenTask(void *pvParameters)
 }
 
 uint32_t ScreenTaskInit(void) {
+	int tHour=0, tMinute=0, tMonth=0, tSecond=0, tDay=0, tYear=0;
+
 	xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
 	UARTprintf("About to menuTask init\n");
 	xSemaphoreGive(g_pUARTSemaphore);
 
 	initTiva();
 	initLCD();
+	InitI2C0();
 
 	setOrientation(3);
 	clearScreen(1);
-
-	setColor(COLOR_RED);
-	fillRect(0,45,160,65);
-
 	setColor(COLOR_WHITE);
-	drawString(30, 20, FONT_LG, "Main Menu");
-	drawString(0, 50, FONT_MD, "Start Journey");
-	drawString(0, 70, FONT_MD, "Stop Journey");
-	drawString(0, 90, FONT_MD, "Change Time/Date");
-	drawString(0, 110, FONT_MD, "Enter Vehicle Params");
+
+	getTime(&tHour, &tMinute, &tSecond);
+	getDate(&tYear, &tMonth, &tDay);
+
+	displayTimeDate(tYear, tMonth, tDay, tHour, tMinute, tSecond);
+
+	checkSDCard();
+
+	state = FROM_RTC;
 
 	g_pScreenQueue = xQueueCreate(SCREEN_QUEUE_SIZE, SCREEN_ITEM_SIZE);
 

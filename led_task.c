@@ -43,7 +43,7 @@
 // The stack size for the LED toggle task.
 //
 //*****************************************************************************
-#define LEDTASKSTACKSIZE        128         // Stack size in words
+#define LEDTASKSTACKSIZE        96         // Stack size in words
 
 //*****************************************************************************
 //

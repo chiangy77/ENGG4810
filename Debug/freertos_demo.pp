@@ -16,9 +16,11 @@ freertos_demo.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/driverlib/sysctl.h
 freertos_demo.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/driverlib/uart.h
 freertos_demo.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/utils/uartstdio.h
 freertos_demo.obj: C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/stdarg.h
-freertos_demo.obj: ../menu_task.h
 freertos_demo.obj: ../led_task.h
 freertos_demo.obj: ../switch_task.h
+freertos_demo.obj: ../screen_task.h
+freertos_demo.obj: ../radio_task.h
+freertos_demo.obj: ../RTC_task.h
 freertos_demo.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/third_party/FreeRTOS/Source/include/FreeRTOS.h
 freertos_demo.obj: C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/stddef.h
 freertos_demo.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/third_party/FreeRTOS/Source/include/projdefs.h
@@ -47,9 +49,11 @@ c:/ti/TivaWare_C_Series-2.1.0.12573/driverlib/sysctl.h:
 c:/ti/TivaWare_C_Series-2.1.0.12573/driverlib/uart.h: 
 c:/ti/TivaWare_C_Series-2.1.0.12573/utils/uartstdio.h: 
 C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/stdarg.h: 
-../menu_task.h: 
 ../led_task.h: 
 ../switch_task.h: 
+../screen_task.h: 
+../radio_task.h: 
+../RTC_task.h: 
 c:/ti/TivaWare_C_Series-2.1.0.12573/third_party/FreeRTOS/Source/include/FreeRTOS.h: 
 C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/stddef.h: 
 c:/ti/TivaWare_C_Series-2.1.0.12573/third_party/FreeRTOS/Source/include/projdefs.h: 

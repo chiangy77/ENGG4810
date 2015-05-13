@@ -240,6 +240,28 @@ void drawCircle(u_char x, u_char y, u_char radius) {
 	}
 }
 
+void drawHalfCircle(u_char x, u_char y, u_char radius) {
+	int dx = radius;
+	int dy = 0;
+	int xChange = 1 - 2 * radius;
+	int yChange = 1;
+	int radiusError = 0;
+	while (dx >= dy) {
+		drawPixel(x - dx, y - dy);
+		drawPixel(x + dx, y - dy);
+		drawPixel(x - dy, y - dx);
+		drawPixel(x + dy, y - dx);
+		dy++;
+		radiusError += yChange;
+		yChange += 2;
+		if (2 * radiusError + xChange > 0) {
+			dx--;
+			radiusError += xChange;
+			xChange += 2;
+		}
+	}
+}
+
 void fillRect(u_char xStart, u_char yStart, u_char xEnd, u_char yEnd) {
 	setArea(xStart, yStart, xEnd, yEnd);
 	u_int total = (xEnd - xStart + 1) * (yEnd - yStart + 1);

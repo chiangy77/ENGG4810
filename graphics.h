@@ -19,6 +19,7 @@ void drawCharSm(u_char x, u_char y, char c);
 void drawLine(u_char xStart, u_char yStart, u_char xEnd, u_char yEnd);
 void drawRect(u_char xStart, u_char yStart, u_char xEnd, u_char yEnd);
 void drawCircle(u_char x, u_char y, u_char radius);
+void drawHalfCircle(u_char x, u_char y, u_char radius);
 void fillRect(u_char xStart, u_char yStart, u_char xEnd, u_char yEnd);
 void fillCircle(u_char x, u_char y, u_char radius);
 

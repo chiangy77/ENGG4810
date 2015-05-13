@@ -8,6 +8,7 @@ screen_task.obj: C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/linkage.h
 screen_task.obj: C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/_lock.h
 screen_task.obj: C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/stdint.h
 screen_task.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/inc/hw_memmap.h
+screen_task.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/driverlib/fpu.h
 screen_task.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/inc/hw_types.h
 screen_task.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/driverlib/gpio.h
 screen_task.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/driverlib/rom.h
@@ -28,6 +29,14 @@ screen_task.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/third_party/FreeRTOS/Source
 screen_task.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/third_party/FreeRTOS/Source/include/list.h
 screen_task.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/third_party/FreeRTOS/Source/include/queue.h
 screen_task.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/third_party/FreeRTOS/Source/include/semphr.h
+screen_task.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/driverlib/interrupt.h
+screen_task.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/driverlib/pin_map.h
+screen_task.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/driverlib/sysctl.h
+screen_task.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/driverlib/systick.h
+screen_task.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/third_party/fatfs/src/ff.h
+screen_task.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/third_party/fatfs/src/integer.h
+screen_task.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/third_party/fatfs/src/ffconf.h
+screen_task.obj: c:/ti/TivaWare_C_Series-2.1.0.12573/third_party/fatfs/src/diskio.h
 screen_task.obj: ../tiva.h
 screen_task.obj: ../typedefs.h
 screen_task.obj: ../lcd.h
@@ -37,8 +46,10 @@ screen_task.obj: ../color.h
 screen_task.obj: C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/math.h
 screen_task.obj: C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/ymath.h
 screen_task.obj: C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/float.h
+screen_task.obj: ../RTC.h
 screen_task.obj: C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/stdio.h
 screen_task.obj: C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/stdarg.h
+screen_task.obj: C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/string.h
 
 ../screen_task.c: 
 C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/stdbool.h: 
@@ -48,6 +59,7 @@ C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/linkage.h:
 C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/_lock.h: 
 C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/stdint.h: 
 c:/ti/TivaWare_C_Series-2.1.0.12573/inc/hw_memmap.h: 
+c:/ti/TivaWare_C_Series-2.1.0.12573/driverlib/fpu.h: 
 c:/ti/TivaWare_C_Series-2.1.0.12573/inc/hw_types.h: 
 c:/ti/TivaWare_C_Series-2.1.0.12573/driverlib/gpio.h: 
 c:/ti/TivaWare_C_Series-2.1.0.12573/driverlib/rom.h: 
@@ -68,6 +80,14 @@ c:/ti/TivaWare_C_Series-2.1.0.12573/third_party/FreeRTOS/Source/include/task.h:
 c:/ti/TivaWare_C_Series-2.1.0.12573/third_party/FreeRTOS/Source/include/list.h: 
 c:/ti/TivaWare_C_Series-2.1.0.12573/third_party/FreeRTOS/Source/include/queue.h: 
 c:/ti/TivaWare_C_Series-2.1.0.12573/third_party/FreeRTOS/Source/include/semphr.h: 
+c:/ti/TivaWare_C_Series-2.1.0.12573/driverlib/interrupt.h: 
+c:/ti/TivaWare_C_Series-2.1.0.12573/driverlib/pin_map.h: 
+c:/ti/TivaWare_C_Series-2.1.0.12573/driverlib/sysctl.h: 
+c:/ti/TivaWare_C_Series-2.1.0.12573/driverlib/systick.h: 
+c:/ti/TivaWare_C_Series-2.1.0.12573/third_party/fatfs/src/ff.h: 
+c:/ti/TivaWare_C_Series-2.1.0.12573/third_party/fatfs/src/integer.h: 
+c:/ti/TivaWare_C_Series-2.1.0.12573/third_party/fatfs/src/ffconf.h: 
+c:/ti/TivaWare_C_Series-2.1.0.12573/third_party/fatfs/src/diskio.h: 
 ../tiva.h: 
 ../typedefs.h: 
 ../lcd.h: 
@@ -77,5 +97,7 @@ c:/ti/TivaWare_C_Series-2.1.0.12573/third_party/FreeRTOS/Source/include/semphr.h
 C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/math.h: 
 C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/ymath.h: 
 C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/float.h: 
+../RTC.h: 
 C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/stdio.h: 
 C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/stdarg.h: 
+C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.2/include/string.h: 

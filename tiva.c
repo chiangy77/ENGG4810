@@ -17,26 +17,26 @@
 void initTiva() {
 
 	// run @80MHz, use 16MHz xtal
-	MAP_SysCtlClockSet (
+	ROM_SysCtlClockSet (
 			SYSCTL_SYSDIV_2_5 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN
 					| SYSCTL_XTAL_16MHZ);
 
-	MAP_SysCtlPeripheralEnable (SYSCTL_PERIPH_GPIOB);
-	MAP_SysCtlPeripheralEnable (SYSCTL_PERIPH_GPIOE);
-	MAP_SysCtlPeripheralEnable (SYSCTL_PERIPH_SSI2);
-	MAP_SysCtlPeripheralEnable (SYSCTL_PERIPH_GPIOA);
+	ROM_SysCtlPeripheralEnable (SYSCTL_PERIPH_GPIOB);
+	ROM_SysCtlPeripheralEnable (SYSCTL_PERIPH_GPIOE);
+	ROM_SysCtlPeripheralEnable (SYSCTL_PERIPH_SSI2);
+	ROM_SysCtlPeripheralEnable (SYSCTL_PERIPH_GPIOA);
 
-	MAP_GPIOPinTypeGPIOOutput (GPIO_PORTA_BASE, LCD_CS_PIN);
-	MAP_GPIOPinTypeGPIOOutput (GPIO_PORTE_BASE, LCD_DC_PIN);
-	MAP_GPIOPinConfigure (GPIO_PB4_SSI2CLK);
-	MAP_GPIOPinTypeSSI (GPIO_PORTB_BASE, GPIO_PIN_4);
-	MAP_GPIOPinConfigure (GPIO_PB7_SSI2TX);
-	MAP_GPIOPinTypeSSI (GPIO_PORTB_BASE, GPIO_PIN_7);
+	ROM_GPIOPinTypeGPIOOutput (GPIO_PORTA_BASE, LCD_CS_PIN); //A4 = CS
+	ROM_GPIOPinTypeGPIOOutput (GPIO_PORTE_BASE, LCD_DC_PIN); //E4 = Data
+	ROM_GPIOPinConfigure (GPIO_PB4_SSI2CLK);				 //B4 = CLK
+	ROM_GPIOPinTypeSSI (GPIO_PORTB_BASE, GPIO_PIN_4);
+	ROM_GPIOPinConfigure (GPIO_PB7_SSI2TX);					 //B7 = MOSI
+	ROM_GPIOPinTypeSSI (GPIO_PORTB_BASE, GPIO_PIN_7);
 
-	MAP_SSIConfigSetExpClk (SSI2_BASE, MAP_SysCtlClockGet (),
+	ROM_SSIConfigSetExpClk (SSI2_BASE, ROM_SysCtlClockGet (),
 			SSI_FRF_MOTO_MODE_0, SSI_MODE_MASTER, 16000000, 8);
 
-	MAP_SSIEnable (SSI2_BASE);
+	ROM_SSIEnable (SSI2_BASE);
 }
 
 // code duplication, but we are saving clock cycles by not passing dataCommand
@@ -64,6 +64,6 @@ void writeCommand(u_char command) {
 }
 
 void delay(u_char x10ms) {
-	 MAP_SysCtlDelay( (MAP_SysCtlClockGet()/(3*100))*x10ms ) ;
+	 ROM_SysCtlDelay( (ROM_SysCtlClockGet()/(3*100))*x10ms ) ;
 }
 

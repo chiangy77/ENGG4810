@@ -45,10 +45,11 @@
 // The stack size for the display task.
 //
 //*****************************************************************************
-#define SWITCHTASKSTACKSIZE        256         // Stack size in words
+#define SWITCHTASKSTACKSIZE        64        // Stack size in words
 
 extern xQueueHandle g_pLEDQueue;
 extern xQueueHandle g_pScreenQueue;
+extern xQueueHandle g_pRTCQueue;
 extern xSemaphoreHandle g_pUARTSemaphore;
 
 //*****************************************************************************
@@ -64,6 +65,7 @@ SwitchTask(void* pvParameters)
 	uint8_t ui8CurButtonState, ui8PrevButtonState;
 	uint8_t ui8Message;
 	uint8_t ui8MessageToScreen;
+	uint8_t ui8MessageToRTC;
 	ui8CurButtonState = ui8PrevButtonState = 0;
 	//
 	// Get the current tick count.
@@ -97,6 +99,7 @@ SwitchTask(void* pvParameters)
 								{
 									ui8Message = LEFT_BUTTON;
 									ui8MessageToScreen = LEFT_BUTTON;
+									ui8MessageToRTC = LEFT_BUTTON;
 									//
 									// Guard UART from concurrent access.
 									//
@@ -108,12 +111,30 @@ SwitchTask(void* pvParameters)
 								{
 									ui8Message = RIGHT_BUTTON;
 									ui8MessageToScreen = RIGHT_BUTTON;
+									ui8MessageToRTC = RIGHT_BUTTON;
 									//
 									// Guard UART from concurrent access.
 									//
 									xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
 									UARTprintf("Right Button is pressed.\n");
 									xSemaphoreGive(g_pUARTSemaphore);
+								}
+
+							//
+							// Pass the value of the button pressed to LEDTask.
+							//
+							if(xQueueSend(g_pRTCQueue, &ui8MessageToRTC, portMAX_DELAY) !=
+									pdPASS)
+								{
+									//
+									// Error. The queue should never be full. If so print the
+									// error message on UART and wait for ever.
+									//
+									UARTprintf("\nScreen Queue full. This should never happen.\n");
+
+									while(1)
+										{
+										}
 								}
 
 							//
