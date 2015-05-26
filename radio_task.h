@@ -1,22 +1,18 @@
 /*
- * radio_task.h
+ * radio.h
  *
- *  Created on: 6 May 2015
- *      Author: Matt
+ *  Created on: 20 Apr 2015
+ *      Author: sharpestu
  */
 
-#ifndef RADIO_TASK_H_
-#define RADIO_TASK_H_
+#ifndef __RADIO_TASK_H__
+#define __RADIO_TASK_H__
 
+//*****************************************************************************
+//
+// Prototypes for the Radio task.
+//
+//*****************************************************************************
 extern uint32_t RadioTaskInit(void);
 
-// nRF
-#define NRF_CE_PIN GPIO_PIN_1
-#define NRF_CSN_PIN GPIO_PIN_2
-#define NRF_IRQ_PIN GPIO_PIN_3
-
-
-#define SSI_FRF_MOTO_MODE_0     0x00000000  // Moto fmt, polarity 0, phase 0
-#define SSI_MODE_MASTER         0x00000000  // SSI master
-
-#endif /* RADIO_TASK_H_ */
+#endif // __RADIO_TASK_H__

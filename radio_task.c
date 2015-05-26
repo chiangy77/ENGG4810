@@ -1,38 +1,22 @@
-//*****************************************************************************
-//
-// switch_task.c - A simple switch task to process the buttons.
-//
-// Copyright (c) 2012-2013 Texas Instruments Incorporated.  All rights reserved.
-// Software License Agreement
-//
-// Texas Instruments (TI) is supplying this software for use solely and
-// exclusively on TI's microcontroller products. The software is owned by
-// TI and/or its suppliers, and is protected under applicable copyright
-// laws. You may not combine this software with "viral" open-source
-// software in order to form a larger program.
-//
-// THIS SOFTWARE IS PROVIDED "AS IS" AND WITH ALL FAULTS.
-// NO WARRANTIES, WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT
-// NOT LIMITED TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-// A PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. TI SHALL NOT, UNDER ANY
-// CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
-// DAMAGES, FOR ANY REASON WHATSOEVER.
-//
-// This is part of revision 1.1 of the EK-TM4C123GXL Firmware Package.
-//
-//*****************************************************************************
+/*
+ * radio.c
+ *
+ *  Created on: 20 Apr 2015
+ *      Author: sharpestu
+ */
+
 
 #include <stdbool.h>
 #include <stdint.h>
 #include "inc/hw_memmap.h"
 #include "inc/hw_types.h"
-#include "inc/hw_gpio.h"
-#include "driverlib/sysctl.h"
 #include "driverlib/gpio.h"
 #include "driverlib/rom.h"
+#include "driverlib/ssi.h"
+#include <driverlib/sysctl.h>
+#include "drivers/rgb.h"
 #include "drivers/buttons.h"
 #include "utils/uartstdio.h"
-#include "driverlib/pin_map.h"
 #include "radio_task.h"
 #include "priorities.h"
 #include "FreeRTOS.h"
@@ -40,185 +24,152 @@
 #include "queue.h"
 #include "semphr.h"
 
-//#include "radio.h"
-//#include "nRF24L01.h"
+#include "tiva.h"
+#include "typedefs.h"
+#include <math.h>
+
+#include "utils/uartstdio.h"
+#include <stdio.h>
+
+#include "radio.h"
+#include "nRF24L01.h"
 
 //*****************************************************************************
 //
-// The stack size for the display task.
+// The stack size for the radio task.
 //
 //*****************************************************************************
-#define RADIOTASKSTACKSIZE        64        // Stack size in words
+#define RADIOTASKSTACKSIZE        128 * 4         // Stack size in words
+
+//*****************************************************************************
+//
+// The item size and queue size for the LED message queue.
+//
+//*****************************************************************************
+//#define RADIO_ITEM_SIZE           sizeof(uint8_t)
+//#define RADIO_QUEUE_SIZE          5
+
+#define RADIO_TOGGLE_DELAY        10
 
 
 extern xSemaphoreHandle g_pUARTSemaphore;
+//extern xSemaphoreHandle g_pSPISemaphore;
 
-void initRadio() {
+//*****************************************************************************
+//
+// The queue that holds messages sent to the LED task.
+//
+//*****************************************************************************
+xQueueHandle g_pRadioQueue;
 
-	// Init nRF
+static void RadioTask(void *pvParameters) {
+	portTickType ui32WakeTime;
+	uint32_t ui32RadioToggleDelay;
+	//uint8_t  i8ButtonMessage;
+	ui32WakeTime = xTaskGetTickCount();
+	// Maybe change this??
+	ui32RadioToggleDelay = RADIO_TOGGLE_DELAY;
 
-	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_SSI1);
-	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOD); // SPI
-	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOE); // CS, CE, IRQ
+	int i;
+    uint8_t packet[32];
+    int16_t parsed[3];
 
-	ROM_GPIOPinConfigure(GPIO_PD0_SSI1CLK);
-	ROM_GPIOPinConfigure(GPIO_PD2_SSI1RX);
-	ROM_GPIOPinConfigure(GPIO_PD3_SSI1TX);
-	ROM_GPIOPinTypeSSI(GPIO_PORTD_BASE, GPIO_PIN_3 | GPIO_PIN_2 | GPIO_PIN_1 | GPIO_PIN_0);
+    //SysCtlClockSet(  SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL |
+    //		        SYSCTL_XTAL_16MHZ  | SYSCTL_OSC_MAIN);
 
-	ROM_SSIConfigSetExpClk(SSI1_BASE, ROM_SysCtlClockGet(),
-			 SSI_FRF_MOTO_MODE_0, SSI_MODE_MASTER, 1000000, 8);
-
-	ROM_SSIEnable(SSI1_BASE);
-
-	ROM_GPIOPinTypeGPIOOutput(GPIO_PORTE_BASE,  NRF_CE_PIN);
-	ROM_GPIOPinTypeGPIOOutput(GPIO_PORTE_BASE, NRF_CSN_PIN);
-	ROM_GPIOPinTypeGPIOInput(GPIO_PORTE_BASE, NRF_IRQ_PIN);
-
-	uint32_t clean = 0;
-	while(SSIDataGetNonBlocking(SSI1_BASE, &clean)) {}
-
-}
-
-static void
-RadioTask(void* pvParameters)
-{
-	portTickType ui16LastTime;
-	uint32_t ui32SwitchDelay = 25;
-//	uint8_t ui8CurButtonState, ui8PrevButtonState;
-//	uint8_t ui8Message;
-//	uint8_t ui8MessageToScreen;
-//	ui8CurButtonState = ui8PrevButtonState = 0;
-//	//
-//	// Get the current tick count.
-//	//
-//	ui16LastTime = xTaskGetTickCount();
 
 	//
 	// Loop forever.
 	//
 	while(1)
-		{
-//			//
-//			// Poll the debounced state of the buttons.
-//			//
-//			ui8CurButtonState = ButtonsPoll(0, 0);
-//
-//			//
-//			// Check if previous debounced state is equal to the current state.
-//			//
-//			if(ui8CurButtonState != ui8PrevButtonState)
-//				{
-//					ui8PrevButtonState = ui8CurButtonState;
-//
-//					//
-//					// Check to make sure the change in state is due to button press
-//					// and not due to button release.
-//					//
-//					if((ui8CurButtonState & ALL_BUTTONS) != 0)
-//						{
-//							if((ui8CurButtonState & ALL_BUTTONS) == LEFT_BUTTON)
-//								{
-//									ui8Message = LEFT_BUTTON;
-//									ui8MessageToScreen = LEFT_BUTTON;
-//									//
-//									// Guard UART from concurrent access.
-//									//
-//									xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
-//									UARTprintf("Left Button is pressed.\n");
-//									xSemaphoreGive(g_pUARTSemaphore);
-//								}
-//							else if((ui8CurButtonState & ALL_BUTTONS) == RIGHT_BUTTON)
-//								{
-//									ui8Message = RIGHT_BUTTON;
-//									ui8MessageToScreen = RIGHT_BUTTON;
-//									//
-//									// Guard UART from concurrent access.
-//									//
-//									xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
-//									UARTprintf("Right Button is pressed.\n");
-//									xSemaphoreGive(g_pUARTSemaphore);
-//								}
-//
-//							//
-//							// Pass the value of the button pressed to LEDTask.
-//							//
-//							if(xQueueSend(g_pScreenQueue, &ui8MessageToScreen, portMAX_DELAY) !=
-//							        pdPASS)
-//								{
-//									//
-//									// Error. The queue should never be full. If so print the
-//									// error message on UART and wait for ever.
-//									//
-//									UARTprintf("\nScreen Queue full. This should never happen.\n");
-//
-//									while(1)
-//										{
-//										}
-//								}
-//
-//							if(xQueueSendToFront(g_pLEDQueue, &ui8Message, portMAX_DELAY) !=
-//							        pdPASS)
-//								{
-//									//
-//									// Error. The queue should never be full. If so print the
-//									// error message on UART and wait for ever.
-//									//
-//									UARTprintf("LED Queue full. This should never happen.\n");
-//
-//									while(1)
-//										{
-//										}
-//								}
-//						}
-//				}
-//
-//			//
-//			// Wait for the required amount of time to check back.
-//			//
-			vTaskDelayUntil(&ui16LastTime, ui32SwitchDelay / portTICK_RATE_MS);
+	{
+	//
+	// Read the next message, if available on queue.
+	//
+		//if(xQueueReceive(g_pRadioQueue, &i8ButtonMessage, 10) == pdPASS)
+		//{
+
+		//xSemaphoreTake(g_pSPISemaphore, portMAX_DELAY);
+
+		//uint8_t byte;
+		//byte = SendRecv_Byte(0x41);
+		//unsigned long aw;
+		//aw = readReg(SETUP_AW);
+
+		//if (isAlive()!=0) {
+	//		xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+	//		//UARTprintf("Radio Recieved (%c), Reg %x\n", byte, aw);
+			//UARTprintf("Radio Alive\n");
+		//	xSemaphoreGive(g_pUARTSemaphore);
+	//	}
+
+
+		//UARTprintf("start 456\n");
+		//xSemaphoreGive(g_pUARTSemaphore);
+
+		//xSemaphoreTake(g_pSPISemaphore, portMAX_DELAY);
+
+		for (i = 0; i < 32; ++i) {
+			packet[i] = 0;
 		}
+
+		if (recieve_packet(packet)) {
+			parse_packet(packet, parsed);
+
+			xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+			//UARTprintf("Received Raw: ");
+			//for (i = 0; i < 32; i++ ) {
+			//	UARTprintf("%x ", packet[i]);
+			//}
+			UARTprintf("%d, %d, %d,\r", parsed[0], parsed[1], parsed[2]);
+			//UARTprintf("\n\rRecieved: ");
+			//for (i = 0; i < 32; i++ ) {
+			//	UARTprintf("%c", packet[i]);
+			//}
+			//UARTprintf("\n\r");
+			xSemaphoreGive(g_pUARTSemaphore);
+		}
+
+		//xSemaphoreGive(g_pSPISemaphore);
+
+
+
+		//}
+		vTaskDelayUntil(&ui32WakeTime, ui32RadioToggleDelay / portTICK_RATE_MS);
+
+	}
 }
 
-//*****************************************************************************
-//
-// Initializes the switch task.
-//
-//*****************************************************************************
-uint32_t
-RadioTaskInit(void)
-{
-//	//
-//	// Unlock the GPIO LOCK register for Right button to work.
-//	//
-//	HWREG(GPIO_PORTF_BASE + GPIO_O_LOCK) = GPIO_LOCK_KEY;
-//	HWREG(GPIO_PORTF_BASE + GPIO_O_CR) = 0xFF;
-//	//
-//	// Initialize the buttons
-//	//
-//	ButtonsInit();
+uint32_t RadioTaskInit(void) {
+	xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+	UARTprintf("About to radioTask init\n");
+	xSemaphoreGive(g_pUARTSemaphore);
+
+	//g_pRadioQueue = xQueueCreate(RADIO_QUEUE_SIZE, RADIO_ITEM_SIZE);
 
 	initRadio();
+	setCE(0);
+	setCSN(1);
+	nrfInit();
 
-	//
-	// Create the radio task.
-	//
-	if(xTaskCreate(RadioTask, (signed portCHAR*)"Radio",
-	               RADIOTASKSTACKSIZE, NULL, tskIDLE_PRIORITY +
-	               PRIORITY_RADIO_TASK, NULL) != pdTRUE)
+	if(xTaskCreate(RadioTask, (signed portCHAR*)"Radio", RADIOTASKSTACKSIZE,
+	               NULL,
+	               tskIDLE_PRIORITY + PRIORITY_RADIO_TASK, NULL) != pdTRUE)
 		{
-			xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+		xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
 			UARTprintf("radioTask init return 1\n");
 			xSemaphoreGive(g_pUARTSemaphore);
 			return(1);
-		} else {
-			xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
-			UARTprintf("radioTask init return 0\n");
-			xSemaphoreGive(g_pUARTSemaphore);
-		}
+	    }
+	xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+		UARTprintf("radioTask init return 0\n");
+		xSemaphoreGive(g_pUARTSemaphore);
 
-	//
-	// Success.
-	//
-	return(0);
+	    //
+	    // Success.
+	    //
+	    return(0);
 }
+
+
+
