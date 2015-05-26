@@ -67,6 +67,8 @@ SwitchTask(void* pvParameters)
 	uint8_t ui8MessageToScreen;
 	uint8_t ui8MessageToRTC;
 	ui8CurButtonState = ui8PrevButtonState = 0;
+
+	uint8_t flagTop, flagBottom, flagTopPrev, flagBottomPrev;
 	//
 	// Get the current tick count.
 	//
@@ -81,13 +83,17 @@ SwitchTask(void* pvParameters)
 			// Poll the debounced state of the buttons.
 			//
 			ui8CurButtonState = ButtonsPoll(0, 0);
+			flagTop = GPIOPinRead(GPIO_PORTC_BASE,GPIO_PIN_6);
+			flagBottom = GPIOPinRead(GPIO_PORTC_BASE,GPIO_PIN_7);
 
 			//
 			// Check if previous debounced state is equal to the current state.
 			//
-			if(ui8CurButtonState != ui8PrevButtonState)
+			if(ui8CurButtonState != ui8PrevButtonState || flagBottom != flagBottomPrev || flagTop != flagTopPrev)
 				{
 					ui8PrevButtonState = ui8CurButtonState;
+					flagBottomPrev = flagBottom;
+					flagTopPrev = flagTop;
 
 					//
 					// Check to make sure the change in state is due to button press
@@ -95,7 +101,7 @@ SwitchTask(void* pvParameters)
 					//
 					if((ui8CurButtonState & ALL_BUTTONS) != 0)
 						{
-							if((ui8CurButtonState & ALL_BUTTONS) == LEFT_BUTTON)
+							if((ui8CurButtonState & ALL_BUTTONS) == LEFT_BUTTON || flagBottom == 1)
 								{
 									ui8Message = LEFT_BUTTON;
 									ui8MessageToScreen = LEFT_BUTTON;
@@ -107,7 +113,7 @@ SwitchTask(void* pvParameters)
 									UARTprintf("Left Button is pressed.\n");
 									xSemaphoreGive(g_pUARTSemaphore);
 								}
-							else if((ui8CurButtonState & ALL_BUTTONS) == RIGHT_BUTTON)
+							else if((ui8CurButtonState & ALL_BUTTONS) == RIGHT_BUTTON || flagTop == 1)
 								{
 									ui8Message = RIGHT_BUTTON;
 									ui8MessageToScreen = RIGHT_BUTTON;
@@ -194,6 +200,10 @@ SwitchTaskInit(void)
 	// Initialize the buttons
 	//
 	ButtonsInit();
+
+	ROM_SysCtlPeripheralEnable (SYSCTL_PERIPH_GPIOC);
+	GPIOPinTypeGPIOInput(GPIO_PORTC_BASE, GPIO_PIN_6);
+	GPIOPinTypeGPIOInput(GPIO_PORTC_BASE, GPIO_PIN_7);
 
 	//
 	// Create the switch task.

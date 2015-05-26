@@ -146,12 +146,12 @@ LEDTask(void* pvParameters)
 					//
 					if(i8Message == RIGHT_BUTTON)
 						{
-							ui32LEDToggleDelay *= 2;
+							//ui32LEDToggleDelay *= 2;
 
-							if(ui32LEDToggleDelay > 1000)
-								{
-									ui32LEDToggleDelay = LED_TOGGLE_DELAY / 2;
-								}
+//							if(ui32LEDToggleDelay > 1000)
+//								{
+//									ui32LEDToggleDelay = LED_TOGGLE_DELAY / 2;
+//								}
 
 							//
 							// Guard UART from concurrent access. Print the currently
