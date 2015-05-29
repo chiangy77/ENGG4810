@@ -39,7 +39,7 @@
 // The stack size for the display task.
 //
 //*****************************************************************************
-#define SCREENTASKSTACKSIZE        1024         // Stack size in words
+#define SCREENTASKSTACKSIZE        2048         // Stack size in words
 
 //*****************************************************************************
 //
@@ -48,8 +48,10 @@
 //*****************************************************************************
 #define SCREEN_ITEM_SIZE           sizeof(uint8_t)
 #define SCREEN_QUEUE_SIZE          5
+#define SCREENRADIO_ITEM_SIZE      sizeof(uint16_t)
+#define SCREENRADIO_QUEUE_SIZE     1
 
-#define SCREEN_TOGGLE_DELAY        50
+#define SCREEN_TOGGLE_DELAY        80
 
 //*****************************************************************************
 static FATFS g_sFatFs;
@@ -153,14 +155,15 @@ StringFromFResult(FRESULT iFResult)
 //
 //*****************************************************************************
 xQueueHandle g_pScreenQueue;
+xQueueHandle g_pScreenRadioQueue;
 
 extern xSemaphoreHandle g_pUARTSemaphore;
 //extern xSemaphoreHandle g_pSPISemaphore;
 
-int speed = 10;
-int accel = 5;
-int gForce = 1;
-int odom = 0;
+float speed = 0, speedPrev=0;
+float accel = 0;
+uint8_t gForce = 0;
+float odom = 0;
 int dir = 0;
 
 FIL fil;
@@ -462,22 +465,22 @@ void showDigital(void) {
 	clearScreen(1);
 
 	drawString(7, 20, FONT_SM, "Speed");
-	usnprintf (buffer, 20, "%d km/hr", speed);
+	usnprintf (buffer, 20, "%d km/hr", (int8_t) speed);
 	drawString(7, 40, FONT_SM, buffer);
 
 	drawString(85, 20, FONT_SM, "Acceleration");
-	usnprintf (buffer, 20, "%d m/s^2", accel);
+	usnprintf (buffer, 20, "%d m/s^2", (int8_t) accel);
 	drawString(85, 40, FONT_SM, buffer);
 
 	drawString(7, 80, FONT_SM, "G-Force");
-	usnprintf (buffer, 20, "%d m/s^2", gForce);
+	usnprintf (buffer, 20, "%d G", gForce);
 	drawString(7, 100, FONT_SM, buffer);
 
 	drawString(85, 80, FONT_SM, "Odometer");
 	usnprintf (buffer, 20, "%d m", odom);
 	drawString(85, 100, FONT_SM, buffer);
 
-	delay(100);
+	//delay(100);
 }
 
 void showAnalogSpeed(void) {
@@ -530,7 +533,7 @@ void showAnalogSpeed(void) {
 	y = 125 - 20*sin(angle*PI/180);
 
 	drawLine(x,y,80,125);
-	delay(100);
+	//delay(100);
 }
 
 void showAnalogAccel(void) {
@@ -546,7 +549,7 @@ void showAnalogAccel(void) {
 
 	drawString(63, 33, FONT_SM, "10 m/s^2");
 	drawString(15, 83, FONT_SM, "0 m/s^2");
-	drawString(95, 83, FONT_SM, "20 m/s^2");
+	drawString(95, 83, FONT_SM, "20 m/s^2"); /*TODO: change to -ve 20*/
 
 	drawString(79, 22, FONT_SM, "|");
 	drawString(10, 89, FONT_SM, "--");
@@ -584,7 +587,7 @@ void showAnalogAccel(void) {
 
 	drawLine(x,y,80,125);
 
-	delay(100);
+	//delay(100);
 }
 
 void showAnalogGForce(void) {
@@ -598,9 +601,9 @@ void showAnalogGForce(void) {
 	drawString(60, 5, FONT_SM, "G-Force");
 	drawHalfCircle(80,90, 70);
 
-	drawString(63, 33, FONT_SM, "5 m/s^2");
-	drawString(15, 83, FONT_SM, "0 m/s^2");
-	drawString(95, 83, FONT_SM, "10 m/s^2");
+	drawString(63, 33, FONT_SM, "5 G");
+	drawString(15, 83, FONT_SM, "0 G");
+	drawString(95, 83, FONT_SM, "10 G");
 
 	drawString(79, 22, FONT_SM, "|");
 	drawString(10, 89, FONT_SM, "--");
@@ -639,7 +642,7 @@ void showAnalogGForce(void) {
 
 	drawLine(x,y,80,125);
 
-	delay(100);
+	//delay(100);
 }
 
 void checkDate (int year, int *month, int *day) {
@@ -738,6 +741,11 @@ void displayTimeDate (int year, int month, int day, int hour, int minute, int se
 
 	usnprintf(buffer, 20, "%02d/%02d/%04d", day, month, year);
 	drawString(10, 95, FONT_LG, buffer);
+
+	/*
+	if (year) {
+		fillRect(10,95,21,101);
+	}*/
 }
 
 void changeMass (int mass) {
@@ -1001,8 +1009,14 @@ ScreenTask(void *pvParameters)
 	portTickType ui32WakeTime;
 	uint32_t ui32ScreenToggleDelay;
 	uint8_t  i8ButtonMessage;
+	int16_t ui16MessageToScreen;
 	ui32WakeTime = xTaskGetTickCount();
 	ui32ScreenToggleDelay = SCREEN_TOGGLE_DELAY;
+
+
+    uint8_t freqFlag, freqFlagPrev=0;
+    portTickType ui32BetweenTransmitTime, ui32BetweenTransmitTimePrev;
+    uint32_t timeDif=0;
 
 	int loop = 0;
 	int analogTrack = 0, changeTimeTrack = 0, changeDateTrack = 0;
@@ -1327,9 +1341,42 @@ ScreenTask(void *pvParameters)
         }
 
         if (loop) {
-        	hardcodeParams();
-        	writeSDCard(speed, accel, odom);
+        	if(xQueueReceive(g_pScreenRadioQueue, &ui16MessageToScreen, 10) == pdPASS) {
+				if (ui16MessageToScreen > 0) {
+					freqFlag = 1;
+				} else {
+					freqFlag = 0;
+				}
+
+				if (freqFlag != freqFlagPrev) {
+					xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+					UARTprintf("fromRadio: %d. freqFlag: %d. freqFlagPrev: %d\n", ui16MessageToScreen, freqFlag,freqFlagPrev);
+					xSemaphoreGive(g_pUARTSemaphore);
+
+					freqFlagPrev = freqFlag;
+					ui32BetweenTransmitTime = xTaskGetTickCount();
+					timeDif = (ui32BetweenTransmitTime - ui32BetweenTransmitTimePrev)*portTICK_RATE_MS;
+
+					speed = PI*diameter*3.6/timeDif;
+					accel = (speed - speedPrev)/3.6*1000/timeDif;
+					odom += sqrt((speed/3.6*timeDif/1000)*(speed/3.6*timeDif/1000));
+
+					xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+					UARTprintf("timeDif: %d, speed: %d, speedPrev: %d, accel:%d, odom: %d\n", timeDif, (int8_t) speed, (int8_t) speedPrev, (int8_t) accel, (int16_t) odom);
+					xSemaphoreGive(g_pUARTSemaphore);
+
+					speedPrev = speed;
+					ui32BetweenTransmitTimePrev = ui32BetweenTransmitTime;
+
+					writeSDCard((int8_t)speed, (int8_t)accel, (int16_t)odom);
+				}
+			}
         }
+
+//        if (loop) {
+//        	hardcodeParams();
+//        	writeSDCard(speed, accel, odom);
+//        }
 
         if (loop == 11)
         	showDigital();
@@ -1372,6 +1419,7 @@ uint32_t ScreenTaskInit(void) {
 	state = FROM_RTC;
 
 	g_pScreenQueue = xQueueCreate(SCREEN_QUEUE_SIZE, SCREEN_ITEM_SIZE);
+	g_pScreenRadioQueue = xQueueCreate(SCREENRADIO_QUEUE_SIZE, SCREENRADIO_ITEM_SIZE);
 
 	if(xTaskCreate(ScreenTask, (signed portCHAR*)"Screen", SCREENTASKSTACKSIZE,
 	               NULL,

@@ -122,7 +122,7 @@ RTCTask(void* pvParameters)
 		if (state == 1 || state == 6)
 			count = 0;
 
-		if (count > 30) {
+		if (count > 10) {
 
 			if (!flag) {
 				flag = 1;
@@ -134,20 +134,13 @@ RTCTask(void* pvParameters)
 			getDate(&tYear, &tMonth, &tDay);
 			vTaskDelayUntil(&ui32WakeTime, 50);
 
-			xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
-			UARTprintf("%02d/%02d/%04d %02d:%02d:%02d\n", tDay, tMonth, tYear, tHour, tMinute, tSecond);
-			xSemaphoreGive(g_pUARTSemaphore);
-
-			displayTimeDate(tYear, tMonth, tDay, tHour, tMinute, tSecond);
-			//displayTimeDate(2015, 5, 7, 19, 1, 45);
-			//displayTimeDate(2015, 5, 7, tHour, tMinute, tSecond);
-			//displayTimeDate(tYear, tMonth, tDay, 19, 1, 45);
+			displayTimeDate(tYear, tMonth, tDay, tHour, tMinute, tSecond); /*TODO: check with previous*/
 			while(SSIDataGetNonBlocking(SSI2_BASE, &ui32RcvDat)) {}
 		}
 
 		count++;
 
-		vTaskDelayUntil(&ui32WakeTime, 500);
+		vTaskDelayUntil(&ui32WakeTime, 1000 / portTICK_RATE_MS);
 	}
 }
 

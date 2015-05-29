@@ -68,7 +68,7 @@ SwitchTask(void* pvParameters)
 	uint8_t ui8MessageToRTC;
 	ui8CurButtonState = ui8PrevButtonState = 0;
 
-	uint8_t flagTop, flagBottom, flagTopPrev, flagBottomPrev;
+	uint8_t flagTop=0, flagBottom=0, flagTopPrev=0, flagBottomPrev=0, messageToSend=0;
 	//
 	// Get the current tick count.
 	//
@@ -83,25 +83,47 @@ SwitchTask(void* pvParameters)
 			// Poll the debounced state of the buttons.
 			//
 			ui8CurButtonState = ButtonsPoll(0, 0);
+
 			flagTop = GPIOPinRead(GPIO_PORTC_BASE,GPIO_PIN_6);
 			flagBottom = GPIOPinRead(GPIO_PORTC_BASE,GPIO_PIN_7);
+
+			if (flagBottom != flagBottomPrev) {
+
+				flagBottomPrev = flagBottom;
+				if (flagBottom) {
+					ui8Message = LEFT_BUTTON;
+					ui8MessageToScreen = LEFT_BUTTON;
+					ui8MessageToRTC = LEFT_BUTTON;
+					messageToSend = 1;
+				}
+			}
+
+			if (flagTop != flagTopPrev) {
+
+				flagTopPrev = flagTop;
+				if (flagTop) {
+					ui8Message = RIGHT_BUTTON;
+					ui8MessageToScreen = RIGHT_BUTTON;
+					ui8MessageToRTC = RIGHT_BUTTON;
+					messageToSend = 1;
+				}
+			}
 
 			//
 			// Check if previous debounced state is equal to the current state.
 			//
-			if(ui8CurButtonState != ui8PrevButtonState || flagBottom != flagBottomPrev || flagTop != flagTopPrev)
+			if(ui8CurButtonState != ui8PrevButtonState || messageToSend == 1)
 				{
 					ui8PrevButtonState = ui8CurButtonState;
-					flagBottomPrev = flagBottom;
-					flagTopPrev = flagTop;
 
 					//
 					// Check to make sure the change in state is due to button press
 					// and not due to button release.
 					//
-					if((ui8CurButtonState & ALL_BUTTONS) != 0)
+					if((ui8CurButtonState & ALL_BUTTONS) != 0 || messageToSend == 1)
 						{
-							if((ui8CurButtonState & ALL_BUTTONS) == LEFT_BUTTON || flagBottom == 1)
+							messageToSend = 0;
+							if((ui8CurButtonState & ALL_BUTTONS) == LEFT_BUTTON)
 								{
 									ui8Message = LEFT_BUTTON;
 									ui8MessageToScreen = LEFT_BUTTON;
@@ -113,7 +135,7 @@ SwitchTask(void* pvParameters)
 									UARTprintf("Left Button is pressed.\n");
 									xSemaphoreGive(g_pUARTSemaphore);
 								}
-							else if((ui8CurButtonState & ALL_BUTTONS) == RIGHT_BUTTON || flagTop == 1)
+							else if((ui8CurButtonState & ALL_BUTTONS) == RIGHT_BUTTON)
 								{
 									ui8Message = RIGHT_BUTTON;
 									ui8MessageToScreen = RIGHT_BUTTON;

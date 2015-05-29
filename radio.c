@@ -268,11 +268,12 @@ int recieve_packet(uint8_t *buffer)
 }
 
 void parse_packet(uint8_t *input, int16_t *output) {
-	output[0] = ((int)input[1]<<8)|(int)input[0];
+	//X
+	output[0] = (input[1]<<8)|input[0];
 	/* The Y value is stored in values[2] and values[3] */
-	output[1] = ((int)input[3]<<8)|(int)input[2];
+	output[1] = (input[3]<<8)|input[2];
 	/* The Z value is stored in values[4] and values[5] */
-	output[2] = ((int)input[5]<<8)|(int)input[4];
+	output[2] = (input[5]<<8)|input[4];
 }
 
 void nrfInit()

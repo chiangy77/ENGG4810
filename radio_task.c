@@ -33,13 +33,17 @@
 
 #include "radio.h"
 #include "nRF24L01.h"
+#include "filtering.h"
 
 //*****************************************************************************
 //
 // The stack size for the radio task.
 //
 //*****************************************************************************
-#define RADIOTASKSTACKSIZE        128 * 4         // Stack size in words
+#define RADIOTASKSTACKSIZE        512         // Stack size in words
+
+extern xQueueHandle g_pScreenQueue;
+extern xQueueHandle g_pScreenRadioQueue;
 
 //*****************************************************************************
 //
@@ -70,44 +74,17 @@ static void RadioTask(void *pvParameters) {
 	// Maybe change this??
 	ui32RadioToggleDelay = RADIO_TOGGLE_DELAY;
 
-	int i;
-    uint8_t packet[32];
-    int16_t parsed[3];
-
-    //SysCtlClockSet(  SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL |
-    //		        SYSCTL_XTAL_16MHZ  | SYSCTL_OSC_MAIN);
-
-
+	int counter=0;
+    uint8_t packet[32], i;
+    int16_t parsed[3], medianYAxis[3], averageYAxis[5], ui16MessageToScreen;
+    int16_t medianYAxisLarge[5];
+    //float movingAverageYAxis[5];
 	//
 	// Loop forever.
 	//
 	while(1)
 	{
-	//
-	// Read the next message, if available on queue.
-	//
-		//if(xQueueReceive(g_pRadioQueue, &i8ButtonMessage, 10) == pdPASS)
-		//{
 
-		//xSemaphoreTake(g_pSPISemaphore, portMAX_DELAY);
-
-		//uint8_t byte;
-		//byte = SendRecv_Byte(0x41);
-		//unsigned long aw;
-		//aw = readReg(SETUP_AW);
-
-		//if (isAlive()!=0) {
-	//		xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
-	//		//UARTprintf("Radio Recieved (%c), Reg %x\n", byte, aw);
-			//UARTprintf("Radio Alive\n");
-		//	xSemaphoreGive(g_pUARTSemaphore);
-	//	}
-
-
-		//UARTprintf("start 456\n");
-		//xSemaphoreGive(g_pUARTSemaphore);
-
-		//xSemaphoreTake(g_pSPISemaphore, portMAX_DELAY);
 
 		for (i = 0; i < 32; ++i) {
 			packet[i] = 0;
@@ -117,17 +94,36 @@ static void RadioTask(void *pvParameters) {
 			parse_packet(packet, parsed);
 
 			xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
-			//UARTprintf("Received Raw: ");
-			//for (i = 0; i < 32; i++ ) {
-			//	UARTprintf("%x ", packet[i]);
-			//}
-			UARTprintf("%d, %d, %d,\r", parsed[0], parsed[1], parsed[2]);
-			//UARTprintf("\n\rRecieved: ");
-			//for (i = 0; i < 32; i++ ) {
-			//	UARTprintf("%c", packet[i]);
-			//}
-			//UARTprintf("\n\r");
+			UARTprintf("%d, %d, %d,\n", parsed[0], parsed[1], parsed[2]);
 			xSemaphoreGive(g_pUARTSemaphore);
+
+			medianYAxis[counter%3] = parsed[1];
+			//medianYAxisLarge[counter%5] = parsed[1];
+			counter++;
+			//ui16MessageToScreen = median(medianYAxis, counter);
+			//ui16MessageToScreen = medianOf5Values(medianYAxisLarge, counter);
+			averageYAxis[counter%5] = median(medianYAxis, counter);
+			ui16MessageToScreen = convolution(averageYAxis, counter);
+
+			xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+			UARTprintf("%d, %d, %d, %d, %d, %d\n", averageYAxis[0], averageYAxis[1], averageYAxis[2], averageYAxis[3], averageYAxis[4], ui16MessageToScreen);
+			xSemaphoreGive(g_pUARTSemaphore);
+			//
+			// Pass the value of the button pressed to ScrenTask.
+			//
+			if(xQueueSend(g_pScreenRadioQueue, &ui16MessageToScreen, portMAX_DELAY) !=
+					pdPASS)
+				{
+					//
+					// Error. The queue should never be full. If so print the
+					// error message on UART and wait for ever.
+					//
+					UARTprintf("\nScreen Queue full. This should never happen.\n");
+
+					while(1)
+						{
+						}
+				}
 		}
 
 		//xSemaphoreGive(g_pSPISemaphore);
@@ -151,6 +147,7 @@ uint32_t RadioTaskInit(void) {
 	setCE(0);
 	setCSN(1);
 	nrfInit();
+
 
 	if(xTaskCreate(RadioTask, (signed portCHAR*)"Radio", RADIOTASKSTACKSIZE,
 	               NULL,
