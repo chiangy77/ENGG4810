@@ -17,7 +17,7 @@
 int16_t convolution(int16_t pInputMatrix[5], uint8_t flag) {
 	float dummy;
 	uint8_t i;
-	int32_t result;
+	int16_t result;
 
 	if (flag > 4) {
 		for (i = 0; i < 5; i++) {

@@ -198,6 +198,8 @@ SwitchTask(void* pvParameters)
 						}
 				}
 
+			ROM_SysTickPeriodSet(ROM_SysCtlClockGet() / 1600);
+
 			//
 			// Wait for the required amount of time to check back.
 			//
@@ -236,6 +238,10 @@ SwitchTaskInit(void)
 		{
 			return(1);
 		}
+
+	xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+	UARTprintf("switchTask init return 0. clock speed: %d\n", SysCtlClockGet());
+	xSemaphoreGive(g_pUARTSemaphore);
 
 	//
 	// Success.

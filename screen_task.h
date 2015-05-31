@@ -9,7 +9,7 @@
 #define SCREEN_TASK_H_
 
 extern int state;
-
+//extern int diameter;
 extern uint32_t ScreenTaskInit(void);
 
 void changeDate (int year, int month, int day, int cursor);
@@ -34,5 +34,11 @@ void displayTimeDate (int year, int month, int day, int hour, int minute, int se
 
 #define SSI_FRF_MOTO_MODE_0     0x00000000
 #define SSI_MODE_MASTER         0x00000000
+
+struct packet {
+	uint8_t speed;
+	int8_t accel;
+	int16_t odom;
+};
 
 #endif /* SCREEN_TASK_H_ */

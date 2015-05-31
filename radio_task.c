@@ -1,11 +1,3 @@
-/*
- * radio.c
- *
- *  Created on: 20 Apr 2015
- *      Author: sharpestu
- */
-
-
 #include <stdbool.h>
 #include <stdint.h>
 #include "inc/hw_memmap.h"
@@ -31,6 +23,7 @@
 #include "utils/uartstdio.h"
 #include <stdio.h>
 
+#include "screen_task.h"
 #include "radio.h"
 #include "nRF24L01.h"
 #include "filtering.h"
@@ -40,7 +33,7 @@
 // The stack size for the radio task.
 //
 //*****************************************************************************
-#define RADIOTASKSTACKSIZE        512         // Stack size in words
+#define RADIOTASKSTACKSIZE        640        // Stack size in words
 
 extern xQueueHandle g_pScreenQueue;
 extern xQueueHandle g_pScreenRadioQueue;
@@ -75,10 +68,20 @@ static void RadioTask(void *pvParameters) {
 	ui32RadioToggleDelay = RADIO_TOGGLE_DELAY;
 
 	int counter=0;
-    uint8_t packet[32], i;
-    int16_t parsed[3], medianYAxis[3], averageYAxis[5], ui16MessageToScreen;
-    int16_t medianYAxisLarge[5];
-    //float movingAverageYAxis[5];
+    uint8_t packet[32], i, freqFlag, freqFlagPrev;
+    int16_t parsed[3], medianYAxis[3], averageYAxis[5];
+    int16_t average;
+//    uint32_t ui16MessageToScreen;
+
+    float speed = 0, speedPrev=0;
+    float accel = 0;
+    uint8_t gForce = 0;
+    float odom = 0;
+    portTickType ui32BetweenTransmitTime, ui32BetweenTransmitTimePrev;
+	uint32_t timeDif=0,time=0;
+
+	struct packet sendPacket;
+
 	//
 	// Loop forever.
 	//
@@ -92,26 +95,63 @@ static void RadioTask(void *pvParameters) {
 
 		if (recieve_packet(packet)) {
 			parse_packet(packet, parsed);
-
+			time = xTaskGetTickCount()*portTICK_RATE_MS;
 			xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
-			UARTprintf("%d, %d, %d,\n", parsed[0], parsed[1], parsed[2]);
+			UARTprintf("%d, %d, %d, time: %d\n", parsed[0], parsed[1], parsed[2], time);
 			xSemaphoreGive(g_pUARTSemaphore);
 
 			medianYAxis[counter%3] = parsed[1];
-			//medianYAxisLarge[counter%5] = parsed[1];
+
 			counter++;
-			//ui16MessageToScreen = median(medianYAxis, counter);
-			//ui16MessageToScreen = medianOf5Values(medianYAxisLarge, counter);
-			averageYAxis[counter%5] = median(medianYAxis, counter);
-			ui16MessageToScreen = convolution(averageYAxis, counter);
+
+			average = median(medianYAxis, counter);
+
+			//averageYAxis[counter%5] = median(medianYAxis, counter);
+			//average = convolution(averageYAxis, counter);
+
+			if (average > 0) {
+				freqFlag = 1;
+			} else {
+				freqFlag = 0;
+			}
 
 			xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
-			UARTprintf("%d, %d, %d, %d, %d, %d\n", averageYAxis[0], averageYAxis[1], averageYAxis[2], averageYAxis[3], averageYAxis[4], ui16MessageToScreen);
+			UARTprintf("average: %d freqFlag: %d freqFlagPrev: %d\n", average, freqFlag, freqFlagPrev);
 			xSemaphoreGive(g_pUARTSemaphore);
+
+
+			if (freqFlag != freqFlagPrev) {
+
+				freqFlagPrev = freqFlag;
+				ui32BetweenTransmitTime = xTaskGetTickCount();
+				timeDif = (ui32BetweenTransmitTime - ui32BetweenTransmitTimePrev)*portTICK_RATE_MS;
+
+				speed = PI*600*3.6/timeDif/1.4;
+				accel = (speed - speedPrev)/3.6*1000/timeDif;
+				odom += sqrt((speed/3.6*timeDif/1000)*(speed/3.6*timeDif/1000));
+
+				xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+				UARTprintf("timeDif: %d, speed: %d, speedPrev: %d, accel:%d, odom: %d\n", timeDif, (int8_t) speed, (int8_t) speedPrev, (int8_t) accel, (int16_t) odom);
+				xSemaphoreGive(g_pUARTSemaphore);
+
+				speedPrev = speed;
+				ui32BetweenTransmitTimePrev = ui32BetweenTransmitTime;
+
+				//ui16MessageToScreen = (uint8_t) speed << 24 | (int8_t) accel << 16 | (uint16_t) odom;
+				sendPacket.speed = (uint8_t) speed;
+				sendPacket.accel = (int8_t) accel;
+				sendPacket.odom = (uint16_t) odom;
+
+				xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+				UARTprintf("speed: %d accel: %d odom: %d\n", sendPacket.speed, sendPacket.accel, sendPacket.odom);
+				xSemaphoreGive(g_pUARTSemaphore);
+			}
+
+
 			//
 			// Pass the value of the button pressed to ScrenTask.
 			//
-			if(xQueueSend(g_pScreenRadioQueue, &ui16MessageToScreen, portMAX_DELAY) !=
+			if(xQueueSend(g_pScreenRadioQueue, &sendPacket, portMAX_DELAY) !=
 					pdPASS)
 				{
 					//
@@ -131,6 +171,7 @@ static void RadioTask(void *pvParameters) {
 
 
 		//}
+
 		vTaskDelayUntil(&ui32WakeTime, ui32RadioToggleDelay / portTICK_RATE_MS);
 
 	}
@@ -158,9 +199,13 @@ uint32_t RadioTaskInit(void) {
 			xSemaphoreGive(g_pUARTSemaphore);
 			return(1);
 	    }
-	xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
-		UARTprintf("radioTask init return 0\n");
+		xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+		UARTprintf("radioTask init return 0 clock speed: %d\n", SysCtlClockGet());
 		xSemaphoreGive(g_pUARTSemaphore);
+
+//		ROM_SysCtlClockSet(SYSCTL_SYSDIV_2_5 | SYSCTL_USE_PLL | SYSCTL_XTAL_16MHZ |
+//			                   SYSCTL_OSC_MAIN);
+		ROM_SysTickPeriodSet(ROM_SysCtlClockGet() / 1600);
 
 	    //
 	    // Success.

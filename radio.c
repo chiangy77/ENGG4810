@@ -127,35 +127,6 @@ unsigned long readReg(unsigned char addr)
 uint8_t SendRecv_Byte(uint8_t byte) {
 
 	uint8_t rxbyte;
-//	HAL_StatusTypeDef status;
-//
-//	/* *hspi, uint8_t *pTxData, uint8_t *pRxData, uint16_t Size, uint32_t Timeout); */
-//	status = HAL_SPI_TransmitReceive(&SpiHandle, &byte, &rxbyte, 1, HAL_MAX_DELAY);
-//
-//	if (status != HAL_OK) {
-//		debug_printf("Error %d\n\r", status);
-//	}
-	//NRF_SELECT;
-	//NRF_CE_DATA;
-
-	//SSI1_DR_R = byte;
-	//while (SSI1_SR_R & SSI_SR_BSY) {
-	//};
-
-	//NRF_DESELECT;
-
-
-	//SysCtlDelay(SysCtlClockGet() / 100 / 3);
-
-
-	///
-//	SSI1_DR_R = byte; // write data to be transmitted to the SPI data register
-//	while( !(SSI1_SR_R & SPI_I2S_FLAG_TXE) ); // wait until transmit complete
-//	while( !(SPI1->SR & SPI_I2S_FLAG_RXNE) ); // wait until receive complete
-//	while( SPI1->SR & SPI_SR_BSY ); // wait until SPI is not busy anymore
-//	return SDR;
-//
-//	return rxbyte;
 
 	uint32_t pui32DataTx[1];
 	uint32_t pui32DataRx[1];
@@ -202,28 +173,14 @@ void readBuffer(uint8_t reg_addr, uint8_t *buffer, int buffer_len) {
 	int i;
 
 	setCSN(0);
-	//rfDelay(0x8FF);
-	//SysCtlDelay(SysCtlClockGet() / 100 / 3);
-
 	sendChar(reg_addr);
-
-	//rfDelay(0x8FF);
-	//SysCtlDelay(SysCtlClockGet() / 100 / 3);
 
 	for (i = 0; i < buffer_len; i++) {
 
-		/* Return the Byte read from the SPI bus */
 		buffer[i] = sendChar(0xFF);
-
-		//rfDelay(0x8FF);
-		//SysCtlDelay(SysCtlClockGet() / 100 / 3);
 	}
 
-	//rfDelay(0x8FF);
-	//SysCtlDelay(SysCtlClockGet() / 100 / 3);
 	setCSN(1);
-	//rfDelay(0x8FF);
-	//SysCtlDelay(SysCtlClockGet() / 100 / 3);
 }
 
 
@@ -233,31 +190,16 @@ int recieve_packet(uint8_t *buffer)
 	writeReg(CONFIG, 0x73);	//0x0f     	// Set PWR_UP bit, enable CRC(2 unsigned chars) & Prim:RX.
 	setCE(1);
 
-	//taskENTER_CRITICAL();
-	//SysCtlDelay(SysCtlClockGet() / 100 / 3);
-
-	//xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
-	//UARTprintf("start 456\n");
-	//xSemaphoreGive(g_pUARTSemaphore);
-
 	int rec = 0;
 	unsigned char status = readReg(STATUS);                  // read register STATUS's value
 
 	if(status & 0x40) {
-		//xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
-		//UARTprintf("ready to recieve\n");
-		//xSemaphoreGive(g_pUARTSemaphore);
-
-		//rfDelay(0x100);
-		//SysCtlDelay(SysCtlClockGet() / 100 / 3);
 
 	    readBuffer(R_RX_PAYLOAD, buffer, 32);  // read playload to rx_buf
 	    writeReg(FLUSH_RX, 0);                             // clear RX_FIFO
 	    rec = 1;
 
 	    setCE(0);
-		//rfDelay(0x100);
-	    //SysCtlDelay(SysCtlClockGet() / 100 / 3);
 
 		writeReg(STATUS, status);                  // clear RX_DR or TX_DS or MAX_RT interrupt flag
 	}

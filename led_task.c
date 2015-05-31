@@ -220,7 +220,9 @@ LEDTaskInit(void)
 		{
 			return(1);
 		}
-
+	xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+	UARTprintf("ledTask init return 0. clock speed: %d\n", SysCtlClockGet());
+	xSemaphoreGive(g_pUARTSemaphore);
 	//
 	// Success.
 	//

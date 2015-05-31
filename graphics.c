@@ -47,6 +47,7 @@ void drawPixel(u_char x, u_char y) {
 // Draw String - type: 0=Sm, 1=Md, 2=Lg
 void drawString(u_char x, u_char y, char type, char *string) {
 	u_char xs = x;
+
 	switch (type) {
 	case FONT_SM:
 		while (*string) {

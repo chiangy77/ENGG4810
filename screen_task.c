@@ -48,10 +48,10 @@
 //*****************************************************************************
 #define SCREEN_ITEM_SIZE           sizeof(uint8_t)
 #define SCREEN_QUEUE_SIZE          5
-#define SCREENRADIO_ITEM_SIZE      sizeof(uint16_t)
+#define SCREENRADIO_ITEM_SIZE      sizeof(struct packet)
 #define SCREENRADIO_QUEUE_SIZE     1
 
-#define SCREEN_TOGGLE_DELAY        80
+#define SCREEN_TOGGLE_DELAY        100
 
 //*****************************************************************************
 static FATFS g_sFatFs;
@@ -160,10 +160,10 @@ xQueueHandle g_pScreenRadioQueue;
 extern xSemaphoreHandle g_pUARTSemaphore;
 //extern xSemaphoreHandle g_pSPISemaphore;
 
-float speed = 0, speedPrev=0;
-float accel = 0;
+uint8_t speed = 0;
+int8_t accel = 0;
 uint8_t gForce = 0;
-float odom = 0;
+uint16_t odom = 0;
 int dir = 0;
 
 FIL fil;
@@ -547,9 +547,9 @@ void showAnalogAccel(void) {
 	drawString(45, 5, FONT_SM, "Acceleration");
 	drawHalfCircle(80,90, 70);
 
-	drawString(63, 33, FONT_SM, "10 m/s^2");
-	drawString(15, 83, FONT_SM, "0 m/s^2");
-	drawString(95, 83, FONT_SM, "20 m/s^2"); /*TODO: change to -ve 20*/
+	drawString(63, 33, FONT_SM, "0 m/s^2");
+	drawString(15, 83, FONT_SM, "-20 m/s^2");
+	drawString(95, 83, FONT_SM, "20 m/s^2");
 
 	drawString(79, 22, FONT_SM, "|");
 	drawString(10, 89, FONT_SM, "--");
@@ -564,7 +564,7 @@ void showAnalogAccel(void) {
 
 
 	//calculation for accel
-	angle = 9*accel;
+	angle = 4.5*(accel+20);
 
 	x = 80 - 55*cos(angle*PI/180);
 	y = 90 - 55*sin(angle*PI/180);
@@ -783,7 +783,7 @@ void checkSDCard(void) {
 	FRESULT iFResult;
 	uint32_t count = 8*512;
 
-	//taskENTER_CRITICAL();
+	taskENTER_CRITICAL();
 
 	while(SSIDataGetNonBlocking(SSI2_BASE, &ui32RcvDat)) {}
 
@@ -827,7 +827,7 @@ void checkSDCard(void) {
 
 	ROM_SysTickPeriodSet(ROM_SysCtlClockGet() / 1600);
 
-	//taskEXIT_CRITICAL();
+	taskEXIT_CRITICAL();
 
 }
 
@@ -920,11 +920,11 @@ void writeSDCard (int sp, int acceleration, int dist) {
 			UARTprintf("Error writing to file: %s\n", StringFromFResult(iFResult));
 			xSemaphoreGive(g_pUARTSemaphore);
 	}
-	else {
-			xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
-			UARTprintf("y\n");
-			xSemaphoreGive(g_pUARTSemaphore);
-	}
+//	else {
+//			xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+//			UARTprintf("y\n");
+//			xSemaphoreGive(g_pUARTSemaphore);
+//	}
 
 	iFResult = f_sync(&fil);
 
@@ -1009,7 +1009,7 @@ ScreenTask(void *pvParameters)
 	portTickType ui32WakeTime;
 	uint32_t ui32ScreenToggleDelay;
 	uint8_t  i8ButtonMessage;
-	int16_t ui16MessageToScreen;
+	struct packet receivePacket;
 	ui32WakeTime = xTaskGetTickCount();
 	ui32ScreenToggleDelay = SCREEN_TOGGLE_DELAY;
 
@@ -1018,12 +1018,12 @@ ScreenTask(void *pvParameters)
     portTickType ui32BetweenTransmitTime, ui32BetweenTransmitTimePrev;
     uint32_t timeDif=0;
 
+    int diameter = 600;
 	int loop = 0;
 	int analogTrack = 0, changeTimeTrack = 0, changeDateTrack = 0;
 	int hour = 20, minute = 32, second = 55; //keep record of time
 	int year = 2015, month = 4, day = 29;
 	int mass = 800;
-	int diameter = 600;
 	int fileTrack = 1;
 
     //
@@ -1341,42 +1341,14 @@ ScreenTask(void *pvParameters)
         }
 
         if (loop) {
-        	if(xQueueReceive(g_pScreenRadioQueue, &ui16MessageToScreen, 10) == pdPASS) {
-				if (ui16MessageToScreen > 0) {
-					freqFlag = 1;
-				} else {
-					freqFlag = 0;
-				}
+        	if(xQueueReceive(g_pScreenRadioQueue, &receivePacket, 10) == pdPASS) {
+        			speed = receivePacket.speed;
+        			accel = receivePacket.accel;
+        			odom = receivePacket.odom;
 
-				if (freqFlag != freqFlagPrev) {
-					xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
-					UARTprintf("fromRadio: %d. freqFlag: %d. freqFlagPrev: %d\n", ui16MessageToScreen, freqFlag,freqFlagPrev);
-					xSemaphoreGive(g_pUARTSemaphore);
-
-					freqFlagPrev = freqFlag;
-					ui32BetweenTransmitTime = xTaskGetTickCount();
-					timeDif = (ui32BetweenTransmitTime - ui32BetweenTransmitTimePrev)*portTICK_RATE_MS;
-
-					speed = PI*diameter*3.6/timeDif;
-					accel = (speed - speedPrev)/3.6*1000/timeDif;
-					odom += sqrt((speed/3.6*timeDif/1000)*(speed/3.6*timeDif/1000));
-
-					xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
-					UARTprintf("timeDif: %d, speed: %d, speedPrev: %d, accel:%d, odom: %d\n", timeDif, (int8_t) speed, (int8_t) speedPrev, (int8_t) accel, (int16_t) odom);
-					xSemaphoreGive(g_pUARTSemaphore);
-
-					speedPrev = speed;
-					ui32BetweenTransmitTimePrev = ui32BetweenTransmitTime;
-
-					writeSDCard((int8_t)speed, (int8_t)accel, (int16_t)odom);
-				}
+					writeSDCard(receivePacket.speed, receivePacket.accel, receivePacket.odom);
 			}
-        }
-
-//        if (loop) {
-//        	hardcodeParams();
-//        	writeSDCard(speed, accel, odom);
-//        }
+		}
 
         if (loop == 11)
         	showDigital();
@@ -1386,8 +1358,6 @@ ScreenTask(void *pvParameters)
 			showAnalogAccel();
         else if (loop == 21 && analogTrack == 2)
 			showAnalogGForce();
-
-        //xSemaphoreGive(g_pSPISemaphore);
 
         vTaskDelayUntil(&ui32WakeTime, ui32ScreenToggleDelay / portTICK_RATE_MS);
 
@@ -1430,8 +1400,8 @@ uint32_t ScreenTaskInit(void) {
 			xSemaphoreGive(g_pUARTSemaphore);
 			return(1);
 	    }
-	xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
-		UARTprintf("menuTask init return 0\n");
+		xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+		UARTprintf("menuTask init return 0. clock speed: %d\n", SysCtlClockGet());
 		xSemaphoreGive(g_pUARTSemaphore);
 
 	    //

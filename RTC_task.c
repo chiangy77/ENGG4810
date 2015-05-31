@@ -134,7 +134,7 @@ RTCTask(void* pvParameters)
 			getDate(&tYear, &tMonth, &tDay);
 			vTaskDelayUntil(&ui32WakeTime, 50);
 
-			displayTimeDate(tYear, tMonth, tDay, tHour, tMinute, tSecond); /*TODO: check with previous*/
+			displayTimeDate(tYear, tMonth, tDay, tHour, tMinute, tSecond);
 			while(SSIDataGetNonBlocking(SSI2_BASE, &ui32RcvDat)) {}
 		}
 
@@ -164,9 +164,9 @@ RTCTaskInit(void)
 			return(1);
 	}
 
-
+	ROM_SysTickPeriodSet(ROM_SysCtlClockGet() / 1600);
 	xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
-	UARTprintf("RTCTask init return 0\n");
+	UARTprintf("RTCTask init return 0 clock speed: %d\n", SysCtlClockGet());
 	xSemaphoreGive(g_pUARTSemaphore);
 
 	//
